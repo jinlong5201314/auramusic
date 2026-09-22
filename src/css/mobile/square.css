@@ -1,0 +1,809 @@
+/**
+ * Solara Mobile UI - 7. 歌单广场移动端原生流体视图 (Mobile Square Stage)
+ * 设计规范：Apple iOS Human Interface Guidelines & WWDC Fluid Interfaces
+ */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. 沉浸全屏舞台容器 (Mobile Fullscreen View)
+   ══════════════════════════════════════════════════════════════════════════ */
+body.mobile-view .square-area {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    z-index: 500 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    box-sizing: border-box !important;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px) !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+
+    /* 浅色模式背景与阴影 */
+    background: #f6f6f9 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18) !important;
+
+    /* 抽屉式滑入滑出过渡 */
+    transform: translateY(100%) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease !important;
+    overflow: hidden !important;
+}
+
+/* 深色模式纯黑底色 */
+body.mobile-view.dark-mode .square-area {
+    background: #0b0c0e !important;
+}
+
+/* 激活状态 */
+body.mobile-view.mobile-square-open .square-area,
+body.mobile-view .container.square-mode .square-area {
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. 移动端顶栏结构重塑 (双行清晰布局，彻底解决挤压乱套)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* 顶部总容器改为双行流体 Flex 换行排布 */
+body.mobile-view .square-top-bar {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    row-gap: 10px !important;
+    column-gap: 8px !important;
+    padding: 0 0 10px 0 !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+    flex-shrink: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+body.mobile-view.dark-mode .square-top-bar {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ── 第一行左侧：品牌标题与平台切换器 ── */
+body.mobile-view .square-brand-section {
+    order: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+}
+
+body.mobile-view .square-brand-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    font-size: 15.5px !important;
+    font-weight: 700 !important;
+    color: var(--text-color) !important;
+    flex-shrink: 0 !important;
+}
+
+body.mobile-view .square-brand-badge .apple-svg-icon {
+    width: 18px !important;
+    height: 18px !important;
+    color: var(--primary-color) !important;
+}
+
+body.mobile-view .square-brand-badge span {
+    display: inline-block !important;
+    font-size: 15px !important;
+    letter-spacing: -0.01em !important;
+}
+
+body.mobile-view .square-platform-wrap {
+    flex: 0 1 auto !important;
+    position: relative !important;
+}
+
+/* 平台下拉选择器 iOS 药丸微胶囊样式 */
+body.mobile-view .square-platform-select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    height: 32px !important;
+    padding: 0 28px 0 12px !important;
+    border-radius: 999px !important;
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
+    background: var(--component-bg, rgba(255, 255, 255, 0.8)) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--apple-glass-border) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    cursor: pointer !important;
+    outline: none !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 10px center !important;
+    background-size: 11px 11px !important;
+}
+
+body.mobile-view.dark-mode .square-platform-select {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* ── 第一行右侧：返回播放器关闭按钮与搜索 ── */
+body.mobile-view .square-action-section {
+    order: 2 !important;
+    flex-shrink: 0 !important;
+    margin-left: auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+body.mobile-view .square-search-box {
+    display: none !important; /* 移动端保持极简顶栏 */
+}
+
+body.mobile-view .close-square-btn {
+    height: 32px !important;
+    padding: 0 14px !important;
+    border-radius: 999px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    background: var(--component-bg, rgba(255, 255, 255, 0.8)) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--apple-glass-border) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    cursor: pointer !important;
+    transition: transform 0.15s ease !important;
+    user-select: none !important;
+}
+
+body.mobile-view .close-square-btn:active {
+    transform: scale(0.94) !important;
+}
+
+body.mobile-view .close-square-btn .apple-svg-icon {
+    width: 13px !important;
+    height: 13px !important;
+}
+
+body.mobile-view .close-square-btn span {
+    display: inline-block !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2.1 移动端专属分类选择栏 (告别横滑不动的原生方案)
+   方案：左侧原生分组选择器 + 右侧「全部分类」矩阵大厅抽屉按钮
+   ══════════════════════════════════════════════════════════════════════════ */
+body.mobile-view .square-mobile-cat-bar {
+    order: 3 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    margin: 2px 0 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* 原生分类下拉框包装器 */
+body.mobile-view .square-cat-select-wrap {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+body.mobile-view .square-cat-select-icon {
+    position: absolute !important;
+    left: 11px !important;
+    pointer-events: none !important;
+    display: flex !important;
+    align-items: center !important;
+    color: var(--primary-color) !important;
+    z-index: 2 !important;
+}
+
+body.mobile-view .square-cat-select-icon .apple-svg-icon {
+    width: 14px !important;
+    height: 14px !important;
+}
+
+body.mobile-view .square-category-select {
+    width: 100% !important;
+    height: 36px !important;
+    padding: 0 28px 0 32px !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    background: var(--component-bg, rgba(255, 255, 255, 0.85)) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--apple-glass-border) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    outline: none !important;
+    cursor: pointer !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 10px center !important;
+    background-size: 11px 11px !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+}
+
+body.mobile-view.dark-mode .square-category-select {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* 打开全部分类矩阵大厅的按钮 */
+body.mobile-view .square-open-cat-sheet-btn {
+    flex: 0 0 auto !important;
+    height: 36px !important;
+    padding: 0 12px !important;
+    border-radius: 12px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    background: var(--component-bg, rgba(255, 255, 255, 0.85)) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--apple-glass-border) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    transition: transform 0.15s ease !important;
+}
+
+body.mobile-view .square-open-cat-sheet-btn:active {
+    transform: scale(0.95) !important;
+}
+
+body.mobile-view .square-open-cat-sheet-btn .apple-svg-icon {
+    width: 13px !important;
+    height: 13px !important;
+    color: var(--primary-color) !important;
+}
+
+body.mobile-view.dark-mode .square-open-cat-sheet-btn {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* 手机端完全隐藏横滑不方便的机械滑块条 */
+body.mobile-view .square-nav-wrapper {
+    display: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2.2 移动端「全部分类大厅」抽屉样式 (Category Picker Sheet)
+   ══════════════════════════════════════════════════════════════════════════ */
+body.mobile-view #categoryPickerModal {
+    z-index: 1000 !important;
+}
+
+body.mobile-view .category-picker-content {
+    max-height: 82vh !important;
+    height: 82vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border-radius: 24px 24px 0 0 !important;
+}
+
+body.mobile-view .category-modal-title-wrap {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+body.mobile-view .category-modal-title-wrap h2 {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+}
+
+body.mobile-view .category-modal-title-wrap .apple-svg-icon {
+    width: 17px !important;
+    height: 17px !important;
+    color: var(--primary-color) !important;
+}
+
+body.mobile-view .category-modal-body {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 12px 16px 28px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+}
+
+body.mobile-view .cat-sheet-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+body.mobile-view .cat-sheet-group-title {
+    display: flex !important;
+    align-items: center !important;
+}
+
+body.mobile-view .cat-group-pill {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    color: var(--text-secondary-color) !important;
+    letter-spacing: 0.02em !important;
+    text-transform: uppercase !important;
+}
+
+body.mobile-view .cat-sheet-group-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+}
+
+body.mobile-view .cat-sheet-chip {
+    padding: 9px 4px !important;
+    border-radius: 10px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    background: var(--component-bg, rgba(0, 0, 0, 0.04)) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--apple-glass-border) !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+}
+
+body.mobile-view .cat-sheet-chip:active {
+    transform: scale(0.94) !important;
+}
+
+body.mobile-view .cat-sheet-chip.active {
+    background: var(--primary-color) !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.25) !important;
+}
+
+body.mobile-view.dark-mode .cat-sheet-chip {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #eeeeee !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+body.mobile-view.dark-mode .cat-sheet-chip.active {
+    background: var(--primary-color) !important;
+    color: #ffffff !important;
+}
+
+/* 单个分类药丸标签 */
+body.mobile-view .square-tag {
+    flex: 0 0 auto !important;
+    padding: 6px 14px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    border-radius: 999px !important;
+    background: var(--component-bg, rgba(255, 255, 255, 0.8)) !important;
+    color: var(--text-secondary-color) !important;
+    border: 1px solid var(--apple-glass-border) !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    outline: none !important;
+    user-select: none !important;
+}
+
+body.mobile-view .square-tag.active {
+    background: var(--primary-color) !important;
+    color: #ffffff !important;
+    border-color: var(--primary-color) !important;
+    font-weight: 600 !important;
+    box-shadow: 0 3px 12px var(--palette-glow, rgba(16, 163, 127, 0.35)) !important;
+}
+
+body.mobile-view .square-tag:active {
+    transform: scale(0.94) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. 移动端歌单瀑布流网格 (双列自适应高清大图)
+   ══════════════════════════════════════════════════════════════════════════ */
+body.mobile-view .square-content-scroll {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 10px 2px calc(env(safe-area-inset-bottom, 0px) + 36px) !important;
+    margin-top: 4px !important;
+    min-height: 0 !important;
+}
+
+body.mobile-view .square-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* 单张歌单卡片 */
+body.mobile-view .square-card {
+    display: flex !important;
+    flex-direction: column !important;
+    background: var(--component-bg, rgba(255, 255, 255, 0.8)) !important;
+    border-radius: 14px !important;
+    padding: 8px !important;
+    border: 1px solid var(--apple-glass-border) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04) !important;
+    box-sizing: border-box !important;
+    transition: transform 0.16s ease !important;
+    user-select: none !important;
+    cursor: pointer !important;
+    overflow: hidden !important;
+}
+
+body.mobile-view .square-card:active {
+    transform: scale(0.96) !important;
+}
+
+body.mobile-view.dark-mode .square-card {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 封面容器 */
+body.mobile-view .square-card-cover-wrap {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+    position: relative !important;
+    background: rgba(0, 0, 0, 0.06) !important;
+}
+
+body.mobile-view .square-card-cover {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+}
+
+/* 播放量微胶囊 */
+body.mobile-view .square-card-badge {
+    position: absolute !important;
+    right: 5px !important;
+    top: 5px !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    color: #ffffff !important;
+    font-size: 10px !important;
+    font-weight: 500 !important;
+    padding: 2px 6px !important;
+    border-radius: 999px !important;
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+}
+
+body.mobile-view .square-card-badge i {
+    font-size: 8.5px !important;
+}
+
+/* 手机触摸端隐藏悬浮播放圆钮 */
+body.mobile-view .square-card-play-btn {
+    display: none !important;
+}
+
+/* 歌单标题与信息 */
+body.mobile-view .square-card-info {
+    padding: 6px 2px 2px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    min-width: 0 !important;
+}
+
+body.mobile-view .square-card-title {
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
+    color: var(--text-color) !important;
+    line-height: 1.35 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 0 !important;
+    word-break: break-word !important;
+}
+
+body.mobile-view .square-card-creator {
+    font-size: 11px !important;
+    color: var(--text-secondary-color) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 0 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. 歌单详情模态框 (Bottom Sheet 原生底部抽屉)
+   ══════════════════════════════════════════════════════════════════════════ */
+body.mobile-view #playlistDetailModal {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 600 !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.25s ease !important;
+    padding: 0 !important;
+}
+
+body.mobile-view #playlistDetailModal.show {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+body.mobile-view #playlistDetailModal .playlist-detail-content {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 86vh !important;
+    max-height: 86vh !important;
+    border-radius: 22px 22px 0 0 !important;
+    background: var(--component-bg, #ffffff) !important;
+    box-sizing: border-box !important;
+    padding: 14px 16px calc(env(safe-area-inset-bottom, 0px) + 16px) !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    transform: translateY(100%) !important;
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    border-top: 1px solid var(--apple-glass-border-top) !important;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15) !important;
+}
+
+body.mobile-view.dark-mode #playlistDetailModal .playlist-detail-content {
+    background: #16171a !important;
+}
+
+body.mobile-view #playlistDetailModal.show .playlist-detail-content {
+    transform: translateY(0) !important;
+}
+
+/* 抽屉顶栏 */
+body.mobile-view #playlistDetailModal .modal-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding-bottom: 10px !important;
+    border-bottom: 1px solid var(--apple-glass-border) !important;
+}
+
+body.mobile-view #playlistDetailModal .modal-header h2 {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: var(--text-color) !important;
+    margin: 0 !important;
+}
+
+body.mobile-view #playlistDetailModal .close-modal-btn {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 50% !important;
+    background: rgba(0, 0, 0, 0.05) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    border: none !important;
+    color: var(--text-color) !important;
+}
+
+body.mobile-view.dark-mode #playlistDetailModal .close-modal-btn {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 歌单封面与标题元信息 */
+body.mobile-view .modal-body.playlist-modal-body {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    overflow: hidden !important;
+    padding: 10px 0 0 !important;
+    gap: 10px !important;
+    min-height: 0 !important;
+}
+
+body.mobile-view .modal-pl-meta {
+    display: flex !important;
+    gap: 12px !important;
+    align-items: center !important;
+    padding-bottom: 10px !important;
+    border-bottom: 1px solid var(--apple-glass-border) !important;
+    flex-shrink: 0 !important;
+}
+
+body.mobile-view .modal-pl-cover {
+    width: 68px !important;
+    height: 68px !important;
+    border-radius: 10px !important;
+    object-fit: cover !important;
+    flex-shrink: 0 !important;
+}
+
+body.mobile-view .modal-pl-details {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+}
+
+body.mobile-view .modal-pl-platform-badge {
+    align-self: flex-start !important;
+    font-size: 10.5px !important;
+    font-weight: 600 !important;
+    padding: 2px 7px !important;
+    border-radius: 4px !important;
+    background: var(--primary-color) !important;
+    color: #ffffff !important;
+}
+
+body.mobile-view .modal-pl-title {
+    font-size: 14.5px !important;
+    font-weight: 700 !important;
+    color: var(--text-color) !important;
+    line-height: 1.3 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 0 !important;
+}
+
+body.mobile-view .modal-pl-creator {
+    font-size: 11.5px !important;
+    color: var(--text-secondary-color) !important;
+    margin: 0 !important;
+}
+
+body.mobile-view .modal-pl-desc {
+    display: none !important; /* 手机端隐藏冗长描述，保障歌曲列表有足够展示空间 */
+}
+
+/* 底部操作按钮 */
+body.mobile-view .modal-pl-actions-bar {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    flex-shrink: 0 !important;
+}
+
+body.mobile-view .modal-btn-primary,
+body.mobile-view .modal-btn-secondary {
+    height: 38px !important;
+    border-radius: 999px !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    cursor: pointer !important;
+    border: none !important;
+}
+
+body.mobile-view .modal-btn-primary {
+    background: var(--primary-color) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px var(--palette-glow, rgba(16, 163, 127, 0.3)) !important;
+}
+
+body.mobile-view .modal-btn-secondary {
+    background: var(--component-bg, rgba(255, 255, 255, 0.2)) !important;
+    border: 1px solid var(--apple-glass-border) !important;
+    color: var(--text-color) !important;
+}
+
+/* 歌曲滚动列表 */
+body.mobile-view .modal-pl-scroll {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    margin: 4px 0 !important;
+    min-height: 0 !important;
+}
+
+body.mobile-view .modal-pl-song-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 9px 8px !important;
+    border-radius: 8px !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.03) !important;
+    transition: background 0.15s ease !important;
+}
+
+body.mobile-view .modal-pl-song-row:active {
+    background: rgba(0, 0, 0, 0.05) !important;
+}
+
+body.mobile-view.dark-mode .modal-pl-song-row:active {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.mobile-view .modal-pl-song-idx {
+    width: 20px !important;
+    font-size: 12px !important;
+    color: var(--text-tertiary-color) !important;
+    text-align: center !important;
+    flex-shrink: 0 !important;
+}
+
+body.mobile-view .modal-pl-song-main {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+}
+
+body.mobile-view .modal-pl-song-name {
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    color: var(--text-color) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+body.mobile-view .modal-pl-song-artist {
+    font-size: 11.5px !important;
+    color: var(--text-secondary-color) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+body.mobile-view .modal-pl-single-play {
+    padding: 6px !important;
+    color: var(--primary-color) !important;
+    background: none !important;
+    border: none !important;
+    flex-shrink: 0 !important;
+}

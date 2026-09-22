@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Solara</title>
+    <meta name="apple-mobile-web-app-title" content="Solara">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+    <link rel="shortcut icon" href="/favicon.png">
+    <link rel="mask-icon" href="/favicon.svg" color="#5bbad5">
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png">
+    <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css?v=2.9.0">
+    <script src="js/i18n.js?v=2.9.0"></script>
+    <script>
+        (function () {
+            const ua = navigator.userAgent || "";
+            const isMobileUA = /android|iphone|ipad|ipod|mobile|blackberry|phone|opera mini|windows phone/i.test(ua);
+            const isSmallScreen = typeof window.matchMedia === "function" && window.matchMedia("(max-width: 820px)").matches;
+            const isMobile = isMobileUA || isSmallScreen;
+            window.__SOLARA_IS_MOBILE = isMobile;
+            if (!isMobile) {
+                document.documentElement.classList.add("desktop-view");
+                const desktopLink = document.createElement("link");
+                desktopLink.rel = "stylesheet";
+                desktopLink.href = "css/desktop.css";
+                desktopLink.id = "desktopStylesheet";
+                document.head.appendChild(desktopLink);
+                return;
+            }
+            document.documentElement.classList.add("mobile-view");
+            const link = document.createElement("link");
+            link.rel = "stylesheet";
+            link.href = "css/mobile.css?v=2.9.0";
+            link.id = "mobileStylesheet";
+            document.head.appendChild(link);
+            let stableViewportHeight = window.innerHeight;
+            const setViewportUnit = () => {
+                const vv = window.visualViewport;
+                const winH = window.innerHeight;
+                const currentH = vv ? vv.height : winH;
+
+                const isInputActive = Boolean(
+                    document.activeElement && 
+                    (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA")
+                );
+                const keyboardHeight = Math.max(0, winH - currentH);
+                const isKeyboardOpen = isInputActive && keyboardHeight > 120;
+
+                if (document.body) {
+                    document.body.classList.toggle("keyboard-open", isKeyboardOpen);
+                }
+                document.documentElement.style.setProperty("--keyboard-height", `${keyboardHeight}px`);
+
+                // 只有在没有键盘弹起（真实改变屏幕大小/旋转）时才更新稳定视口高度
+                if (!isKeyboardOpen || !stableViewportHeight) {
+                    stableViewportHeight = currentH;
+                    document.documentElement.style.setProperty("--mobile-vh", `${currentH}px`);
+                }
+            };
+
+            const applyBodyClass = () => {
+                if (document.body) {
+                    document.body.classList.add("mobile-view");
+                    setViewportUnit();
+                }
+            };
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", applyBodyClass, { once: true });
+            } else {
+                applyBodyClass();
+            }
+
+            window.addEventListener("resize", setViewportUnit);
+            window.addEventListener("orientationchange", () => {
+                stableViewportHeight = window.innerHeight;
+                setViewportUnit();
+            });
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener("resize", setViewportUnit);
+                window.visualViewport.addEventListener("scroll", setViewportUnit);
+            }
+            window.addEventListener("focusin", () => setTimeout(setViewportUnit, 100));
+            window.addEventListener("focusout", () => {
+                setTimeout(() => {
+                    if (document.body) document.body.classList.remove("keyboard-open");
+                    document.documentElement.style.setProperty("--keyboard-height", "0px");
+                    setViewportUnit();
+                }, 150);
+            });
+
+            setViewportUnit();
+        })();
+    </script>
+    <style id="safari-ios-26-fix">
+        /* --- Safari iOS 26 Fix --- */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+        .login-shell {
+            position: relative;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-inline: auto;
+        }
+        body {
+            padding-left: max(env(safe-area-inset-left), 16px);
+            padding-right: max(env(safe-area-inset-right), 16px);
+        }
+        @supports (height: 100dvh) {
+            :root {
+                --mobile-vh: 100dvh;
+            }
+        }
+    </style>
+    <script>
+        (function fixMobileVH(){
+            document.documentElement.style.setProperty("--mobile-vh", window.innerHeight + "px");
+            window.addEventListener("resize", fixMobileVH);
+            window.addEventListener("orientationchange", fixMobileVH);
+        })();
+    </script>
+
+</head>
+<body>
+    <div class="background-stage" id="backgroundStage" aria-hidden="true">
+        <div class="background-stage__layer background-stage__layer--base" id="backgroundBaseLayer">
+            <div class="aurora-mesh">
+                <div class="aurora-orb aurora-orb--1"></div>
+                <div class="aurora-orb aurora-orb--2"></div>
+                <div class="aurora-orb aurora-orb--3"></div>
+                <div class="aurora-orb aurora-orb--4"></div>
+            </div>
+            <div class="aurora-noise"></div>
+        </div>
+        <div class="background-stage__layer background-stage__layer--transition" id="backgroundTransitionLayer">
+            <div class="aurora-mesh">
+                <div class="aurora-orb aurora-orb--1"></div>
+                <div class="aurora-orb aurora-orb--2"></div>
+                <div class="aurora-orb aurora-orb--3"></div>
+                <div class="aurora-orb aurora-orb--4"></div>
+            </div>
+            <div class="aurora-noise"></div>
+        </div>
+        <div class="background-stage__glass-scrim"></div>
+    </div>
+    <div class="container" id="mainContainer">
+        <div class="mobile-toolbar" id="mobileToolbar" role="toolbar">
+            <div class="mobile-toolbar__leading">
+                <button class="mobile-toolbar__button" id="mobileExploreButton" type="button" aria-label="探索雷达" title="探索雷达">
+                    <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 6a6 6 0 0 1 6 6"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 12 4 20"/></svg>
+                </button>
+                <button class="mobile-toolbar__button" id="mobileSquareButton" type="button" aria-label="歌单广场" title="歌单广场">
+                    <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </button>
+            </div>
+            <div class="mobile-toolbar__title" id="mobileToolbarTitle">Solara</div>
+            <div class="mobile-toolbar__actions">
+                <button class="mobile-toolbar__button theme-toggle-button" id="mobileThemeToggle" type="button" aria-label="切换深浅色模式" title="切换深浅色模式">
+                    <svg class="apple-svg-icon theme-icon theme-icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v1.5m0 16v1.5m-9.5-9.5H4m16 0h1.5m-2.6-6.4-.9.9M6.4 17.6l-.9.9m0-13 .9.9m11.3 11.3.9.9"/></svg>
+                    <svg class="apple-svg-icon theme-icon theme-icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4m2-2h-4"/></svg>
+                </button>
+                <button class="mobile-toolbar__button" id="mobileSearchToggle" type="button" aria-label="打开搜索" title="打开搜索">
+                    <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="header">
+            <div class="header-center">
+                <div class="header-brand-wrap" title="双击打开设置">
+                    <h1 class="header-logo">Solara</h1>
+                    <span class="header-badge">Hi-Res Flow</span>
+                </div>
+                <div class="warning">Made by Wet Dream Boy，免费API来自GD音乐台(music.gdstudio.xyz)，仅供学习交流使用，请支持正版音乐。</div>
+            </div>
+            <div class="header-actions">
+                <button id="themeToggleButton" class="theme-toggle-button" type="button" aria-label="切换深浅色模式" title="切换深浅色模式">
+                    <svg class="apple-svg-icon theme-icon theme-icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v1.5m0 16v1.5m-9.5-9.5H4m16 0h1.5m-2.6-6.4-.9.9M6.4 17.6l-.9.9m0-13 .9.9m11.3 11.3.9.9"/></svg>
+                    <svg class="apple-svg-icon theme-icon theme-icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4m2-2h-4"/></svg>
+                </button>
+                <button id="layoutToggleBtn" class="theme-toggle-button layout-toggle-btn" type="button" aria-label="切换播放器视图大小" title="切换播放器视图大小（双击Logo打开设置）">
+                    <svg class="apple-svg-icon layout-icon layout-icon--minimize" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 10 7-7m-1 7h-6V4M3 21l7-7m-6 0h6v6"/></svg>
+                    <svg class="apple-svg-icon layout-icon layout-icon--maximize" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6m0-6-7 7M3 21l7-7m-1 7H3v-6"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="search-area spotlight-card" id="searchArea">
+            <div class="search-header">
+                <div class="search-title-wrap">
+                    <h2 class="search-title">探索音乐</h2>
+                    <span class="search-subtitle">跨站曲库检索与批量管理</span>
+                </div>
+                <button type="button" class="mobile-close-btn" id="mobileSearchClose" aria-label="关闭搜索">
+                    <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="search-controls-wrapper">
+                <div class="search-bar-unified">
+                    <div class="search-input-wrapper">
+                        <svg class="apple-svg-icon search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+                        <input type="text" id="searchInput" class="search-input" placeholder="搜索歌曲、歌手或专辑..." autocomplete="off">
+                        <button type="button" class="search-clear-btn" id="searchClearBtn" aria-label="清空搜索内容" style="display: none;">
+                            <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="9" opacity="0.18"/><path d="m15 9-6 6m0-6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        </button>
+                    </div>
+                    <div class="source-select-wrapper" id="sourceSelectWrapper">
+                        <button id="sourceSelectButton" class="source-select-btn" type="button" aria-haspopup="listbox" aria-expanded="false">
+                            <span id="sourceSelectLabel">网易云</span>
+                            <svg class="apple-svg-icon caret-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                        </button>
+                        <div id="sourceMenu" class="source-menu" role="listbox" aria-labelledby="sourceSelectButton"></div>
+                    </div>
+                </div>
+                <button id="searchBtn" class="search-btn">
+                    <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+                    <span>搜索</span>
+                </button>
+                <div class="search-results-toolbar">
+                    <div class="import-dropdown">
+                        <button class="import-selected-btn" id="importSelectedBtn" disabled>
+                            <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><polyline points="7 9 12 4 17 9"/><line x1="12" y1="4" x2="12" y2="16"/></svg>
+                            <span>导入已选</span>
+                            <span id="importSelectedCount" class="import-selected-count"></span>
+                            <svg class="apple-svg-icon import-dropdown-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                        </button>
+                        <div class="import-dropdown-menu" id="importSelectedMenu" hidden>
+                            <button class="import-dropdown-item" id="importToPlaylist" data-action="playlist">导入到播放列表</button>
+                            <button class="import-dropdown-item" id="importToFavorites" data-action="favorites">导入到收藏列表</button>
+                        </div>
+                    </div>
+                </div>
+                <button class="close-search-btn" id="closeSearchBtn" type="button" title="收起搜索结果 (Esc)" aria-label="收起搜索结果">
+                    <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <div id="searchResults" class="search-results">
+                <div id="searchResultsList" class="search-results-list"></div>
+            </div>
+            <div class="mobile-search-handle" id="mobileSearchHandle" role="button" aria-label="收起搜索" title="轻触或向上滑动收起搜索" tabindex="0"></div>
+        </div>
+
+        <!-- 歌单广场独立大厅 (Square Area - 宽屏沉浸式全景舞台) -->
+        <div class="square-area spotlight-card" id="squareArea" hidden>
+            <div class="square-top-bar">
+                <div class="square-brand-section">
+                    <div class="square-brand-badge">
+                        <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        <span>歌单广场</span>
+                    </div>
+                    <div class="square-platform-wrap">
+                        <select id="squarePlatformSelect" class="square-platform-select" aria-label="选择音乐平台">
+                            <option value="qq" selected>QQ 音乐</option>
+                            <option value="netease">网易云音乐</option>
+                            <option value="kuwo">酷我音乐</option>
+                            <option value="kugou">酷狗音乐</option>
+                            <option value="migu">咪咕音乐</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="square-mobile-cat-bar" id="squareMobileCatBar">
+                    <div class="square-cat-select-wrap">
+                        <span class="square-cat-select-icon">
+                            <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+                        </span>
+                        <select id="squareCategorySelect" class="square-category-select" aria-label="选择歌单分类">
+                            <!-- 分类下拉项动态填充 -->
+                        </select>
+                    </div>
+                    <button type="button" class="square-open-cat-sheet-btn" id="openCategorySheetBtn" title="打开分类矩阵大厅" aria-label="打开分类矩阵大厅">
+                        <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+                        <span>全部分类</span>
+                    </button>
+                </div>
+
+                <div class="square-nav-wrapper">
+                    <button type="button" class="square-nav-scroll-btn square-nav-prev" id="squareNavPrev" aria-label="向左滚动分类" title="向左滚动分类">
+                        <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <div class="square-categories-bar" id="squareCategoryTags">
+                        <!-- 分类标签动态填充 -->
+                    </div>
+                    <button type="button" class="square-nav-scroll-btn square-nav-next" id="squareNavNext" aria-label="向右滚动分类" title="向右滚动分类">
+                        <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+
+                <div class="square-action-section">
+                    <div class="square-search-box">
+                        <input type="text" id="squareSearchInput" class="square-search-input" placeholder="在当前/全网搜歌单..." autocomplete="off">
+                        <button type="button" id="squareSearchBtn" class="square-search-btn" title="搜索歌单" aria-label="搜索歌单">
+                            <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+                        </button>
+                    </div>
+                    <button type="button" class="close-square-btn" id="closeSquareBtn" title="返回播放器 (Esc)" aria-label="返回播放器">
+                        <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        <span>返回播放器</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="square-content-scroll" id="squareContentScroll">
+                <div class="square-grid" id="squarePlaylistGrid">
+                    <!-- 歌单卡片动态填充 -->
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="cover-area spotlight-card">
+                <div class="mobile-turntable" id="mobileTurntable">
+                    <div class="mobile-turntable__platter">
+                        <div class="album-cover" id="albumCover">
+                            <div class="album-cover-ambience"></div>
+                            <div class="placeholder">
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3" fill="currentColor"/><circle cx="18" cy="16" r="3" fill="currentColor"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mobile-inline-lyrics" id="mobileInlineLyrics" aria-hidden="true">
+                    <div class="mobile-inline-lyrics__header" id="mobileInlineLyricsHeader">
+                        <div class="mobile-inline-lyrics__handle" aria-hidden="true"></div>
+                        <div class="mobile-inline-lyrics__hint" id="mobileInlineLyricsHint">
+                            <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                            <span>轻触或下滑返回</span>
+                        </div>
+                    </div>
+                    <div class="mobile-inline-lyrics__scroll" id="mobileInlineLyricsScroll">
+                        <div class="mobile-inline-lyrics__content" id="mobileInlineLyricsContent"></div>
+                    </div>
+                </div>
+                <div class="current-song-info">
+                    <div class="current-song-title-row">
+                        <span class="current-song-title" id="currentSongTitle">选择一首歌曲开始播放</span>
+                        <button
+                            class="favorite-toggle current-favorite-btn"
+                            id="currentFavoriteToggle"
+                            type="button"
+                            aria-label="收藏当前歌曲"
+                            title="收藏当前歌曲"
+                        >
+                            <svg class="apple-svg-icon heart-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                            <svg class="apple-svg-icon heart-solid" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                        </button>
+                    </div>
+                    <div class="current-song-meta-row">
+                        <div class="current-song-artist" id="currentSongArtist">未知艺术家</div>
+                        <div class="audio-visualizer" id="audioVisualizer" title="音乐律动">
+                            <span></span><span></span><span></span><span></span>
+                        </div>
+                    </div>
+                    <button class="mobile-quality-chip" id="mobileQualityToggle" type="button" aria-haspopup="menu" aria-expanded="false">
+                        <span id="mobileQualityLabel">极高音质</span>
+                        <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mobile-panel" id="mobilePanel">
+                <div class="mobile-panel-header" id="mobilePanelHeader">
+                    <div class="mobile-panel-handle" aria-hidden="true"></div>
+                    <div class="playlist-tabs" role="tablist">
+                        <div class="playlist-tabs-indicator" aria-hidden="true"></div>
+                        <button
+                            id="mobilePlaylistTab"
+                            class="playlist-tab active"
+                            type="button"
+                            role="tab"
+                            aria-selected="true"
+                            data-target="playlist"
+                        >
+                            播放列表
+                        </button>
+                        <button
+                            id="mobileFavoritesTab"
+                            class="playlist-tab"
+                            type="button"
+                            role="tab"
+                            aria-selected="false"
+                            data-target="favorites"
+                        >
+                            收藏列表
+                        </button>
+                    </div>
+                    <div class="mobile-panel-actions">
+                        <div class="mobile-actions-group" id="mobilePlaylistActions" role="group" aria-label="播放列表操作" aria-hidden="false">
+                            <button
+                                id="mobileImportPlaylistBtn"
+                                class="mobile-panel-action-btn"
+                                type="button"
+                                aria-label="导入播放列表"
+                                title="导入播放列表"
+                            >
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m5-7-5-5-5 5m14 7v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+                            </button>
+                            <button
+                                id="mobileExportPlaylistBtn"
+                                class="mobile-panel-action-btn"
+                                type="button"
+                                aria-label="导出播放列表"
+                                title="导出播放列表"
+                                aria-disabled="true"
+                                disabled
+                            >
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m9 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+                            </button>
+                            <button
+                                id="mobileClearPlaylistBtn"
+                                class="mobile-panel-action-btn mobile-panel-clear-btn"
+                                type="button"
+                                aria-label="清空播放列表"
+                                title="清空播放列表"
+                                aria-disabled="true"
+                                disabled
+                            >
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 11v6m4-6v6m5-11v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                        </div>
+                        <div class="mobile-actions-group" id="mobileFavoritesActions" role="group" aria-label="收藏列表操作" hidden aria-hidden="true">
+                            <button
+                                id="mobileAddAllFavoritesBtn"
+                                class="mobile-panel-action-btn"
+                                type="button"
+                                aria-label="全部添加到播放列表"
+                                title="全部添加到播放列表"
+                            >
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 5H3m8 7H3m13 7H3M18 9v6m3-3h-6"/></svg>
+                            </button>
+                            <button
+                                id="mobileImportFavoritesBtn"
+                                class="mobile-panel-action-btn"
+                                type="button"
+                                aria-label="导入收藏列表"
+                                title="导入收藏列表"
+                            >
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m5-7-5-5-5 5m14 7v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+                            </button>
+                            <button
+                                id="mobileExportFavoritesBtn"
+                                class="mobile-panel-action-btn"
+                                type="button"
+                                aria-label="导出收藏列表"
+                                title="导出收藏列表"
+                                aria-disabled="true"
+                                disabled
+                            >
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m9 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+                            </button>
+                            <button
+                                id="mobileClearFavoritesBtn"
+                                class="mobile-panel-action-btn mobile-panel-clear-btn"
+                                type="button"
+                                aria-label="清空收藏列表"
+                                title="清空收藏列表"
+                            >
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 11v6m4-6v6m5-11v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                        </div>
+                        <button id="mobilePanelClose" class="mobile-close-btn mobile-panel-action-btn" type="button" aria-label="收起播放面板">
+                            <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="playlist spotlight-card active empty" id="playlist" role="tabpanel" aria-labelledby="playlistTab">
+                    <div class="playlist-header">
+                        <div class="playlist-tabs" role="tablist">
+                            <div class="playlist-tabs-indicator" aria-hidden="true"></div>
+                            <button
+                                id="playlistTab"
+                                class="playlist-tab active"
+                                type="button"
+                                role="tab"
+                                aria-selected="true"
+                                data-target="playlist"
+                            >播放列表</button>
+                            <button
+                                id="favoritesTab"
+                                class="playlist-tab"
+                                type="button"
+                                role="tab"
+                                aria-selected="false"
+                                data-target="favorites"
+                            >收藏列表</button>
+                        </div>
+                        <div class="playlist-actions-tray" role="group" aria-label="播放列表操作">
+                            <input
+                                id="importPlaylistInput"
+                                class="playlist-import-input"
+                                type="file"
+                                accept="application/json"
+                                hidden
+                            />
+                            <button
+                                class="playlist-action-btn playlist-action-btn--import"
+                                id="importPlaylistBtn"
+                                type="button"
+                                title="导入播放列表"
+                                aria-label="导入播放列表"
+                            >
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m5-7-5-5-5 5m14 7v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+                            </button>
+                            <button
+                                class="playlist-action-btn playlist-action-btn--export"
+                                id="exportPlaylistBtn"
+                                type="button"
+                                title="导出播放列表"
+                                aria-label="导出播放列表"
+                            >
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m9 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+                            </button>
+                            <button
+                                class="playlist-action-btn playlist-action-btn--clear clear-playlist-btn"
+                                id="clearPlaylistBtn"
+                                type="button"
+                                onclick="clearPlaylist()"
+                                title="清空播放列表"
+                                aria-label="清空播放列表"
+                            >
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 11v6m4-6v6m5-11v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="playlist-scroll">
+                        <div class="playlist-items" id="playlistItems"></div>
+                    </div>
+                </div>
+                <div class="playlist spotlight-card favorites empty" id="favorites" role="tabpanel" aria-labelledby="favoritesTab" hidden>
+                    <div class="playlist-header">
+                        <div class="playlist-tabs" role="tablist">
+                            <div class="playlist-tabs-indicator" aria-hidden="true"></div>
+                            <button
+                                id="playlistTabSecondary"
+                                class="playlist-tab active"
+                                type="button"
+                                role="tab"
+                                aria-selected="true"
+                                data-target="playlist"
+                            >播放列表</button>
+                            <button
+                                id="favoritesTabSecondary"
+                                class="playlist-tab"
+                                type="button"
+                                role="tab"
+                                aria-selected="false"
+                                data-target="favorites"
+                            >收藏列表</button>
+                        </div>
+                        <div class="playlist-actions-tray" role="group" aria-label="收藏列表操作">
+                            <button
+                                class="playlist-action-btn"
+                                id="addAllFavoritesBtn"
+                                type="button"
+                                title="全部添加到播放列表"
+                                aria-label="全部添加到播放列表"
+                            >
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 5H3m8 7H3m13 7H3M18 9v6m3-3h-6"/></svg>
+                            </button>
+                            <input
+                                id="importFavoritesInput"
+                                class="playlist-import-input"
+                                type="file"
+                                accept="application/json"
+                                hidden
+                            />
+                            <button
+                                class="playlist-action-btn"
+                                id="importFavoritesBtn"
+                                type="button"
+                                title="导入收藏列表"
+                                aria-label="导入收藏列表"
+                            >
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m5-7-5-5-5 5m14 7v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+                            </button>
+                            <button
+                                class="playlist-action-btn"
+                                id="exportFavoritesBtn"
+                                type="button"
+                                title="导出收藏列表"
+                                aria-label="导出收藏列表"
+                            >
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m9 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+                            </button>
+                            <button
+                                class="playlist-action-btn playlist-action-btn--clear"
+                                id="clearFavoritesBtn"
+                                type="button"
+                                title="清空收藏列表"
+                                aria-label="清空收藏列表"
+                            >
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 11v6m4-6v6m5-11v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="playlist-scroll">
+                        <div class="playlist-items" id="favoriteItems"></div>
+                    </div>
+                </div>
+                <div class="lyrics spotlight-card empty" id="lyrics" data-placeholder="default">
+                    <div class="lyrics-scroll" id="lyricsScroll">
+                        <div class="lyrics-content" id="lyricsContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls spotlight-card">
+            <div class="transport-controls">
+                <button class="play-mode-btn transport-button transport-button--mode" id="playModeBtn" type="button" title="播放模式">
+                    <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+                </button>
+                <button class="transport-button transport-button--prev" onclick="playPrevious()" type="button" title="上一曲">
+                    <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5a1 1 0 0 1 1 1v12a1 1 0 1 1-2 0V6a1 1 0 0 1 1-1zm12.5 1.15a1 1 0 0 0-1.55-.83L8.5 11.17a1 1 0 0 0 0 1.66l8.45 5.85a1 1 0 0 0 1.55-.83V6.15z"/></svg>
+                </button>
+                <button class="transport-button transport-button--play" id="playPauseBtn" type="button" title="播放 / 暂停">
+                    <svg class="apple-svg-icon icon-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5.5v13a1.5 1.5 0 0 0 2.3 1.28l10.5-6.5a1.5 1.5 0 0 0 0-2.56L9.3 4.22A1.5 1.5 0 0 0 7 5.5z"/></svg>
+                </button>
+                <button class="transport-button transport-button--next" onclick="playNext()" type="button" title="下一曲">
+                    <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 5a1 1 0 0 1 1 1v12a1 1 0 1 1-2 0V6a1 1 0 0 1 1-1zM5.5 6.15a1 1 0 0 1 1.55-.83l8.45 5.85a1 1 0 0 1 0 1.66l-8.45 5.85a1 1 0 0 1-1.55-.83V6.15z"/></svg>
+                </button>
+                <button class="transport-button transport-button--queue" id="mobileQueueToggle" type="button" title="打开播放列表" aria-label="打开播放列表">
+                    <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                </button>
+                <button class="transport-button transport-button--shuffle" id="shuffleToggleBtn" type="button" title="随机播放" aria-label="切换随机播放">
+                    <svg class="apple-svg-icon shuffle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.6-8.6c.8-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.4c1.3 0 2.5.6 3.3 1.7l1.8 2.3"/><path d="M14.9 14.7l1.8 2.3c.8 1.1 2 1.7 3.3 1.7H22"/><path d="m18 22 4-4-4-4"/></svg>
+                </button>
+            </div>
+            <div class="progress-container">
+                <span id="currentTimeDisplay">00:00</span>
+                <input type="range" id="progressBar" min="0" max="0" step="0.1" value="0">
+                <span id="durationDisplay">00:00</span>
+            </div>
+            <div class="control-trailing">
+                <div class="audio-tools">
+                    <div class="player-quality">
+                        <button id="qualityToggle" class="player-quality-btn" type="button">
+                            <span id="qualityLabel">极高音质</span>
+                        </button>
+                        <div id="playerQualityMenu" class="player-quality-menu"></div>
+                    </div>
+                    <div class="volume-container">
+                        <span id="volumeIconWrap" class="volume-icon-wrap" role="button" tabindex="0" title="静音 / 恢复音量" aria-label="静音或恢复音量">
+                            <svg id="volumeIcon" class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                        </span>
+                        <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.8" style="--volume-progress: 80%;">
+                    </div>
+                </div>
+                <button id="headerSquareBtn" class="radar-btn square-trigger-btn" type="button" aria-label="打开歌单广场" title="打开歌单广场 (QQ音乐 / 网易云 / 酷我 / 酷狗)">
+                    <span class="btn-text">
+                        <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        <span>歌单广场</span>
+                    </span>
+                </button>
+                <button id="loadOnlineBtn" class="radar-btn" title="聚合所有雷达，探索新音乐">
+                    <span class="radar-ping-ring"></span>
+                    <span class="btn-text">
+                        <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 6a6 6 0 0 1 6 6"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 12 4 20"/></svg>
+                        <span>探索雷达</span>
+                    </span>
+                    <span class="loader" style="display: none;"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="mobile-overlay-scrim" id="mobileOverlayScrim"></div>
+
+    <audio id="audioPlayer" preload="metadata" playsinline></audio>
+
+<!-- 设置模态框 -->
+<div id="settingsModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content settings-content">
+        <div class="modal-header">
+            <h2>设置</h2>
+            <button id="closeSettingsBtn" class="close-modal-btn" aria-label="关闭设置">
+                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <section class="settings-section">
+                <h3>探索雷达榜单</h3>
+                <p class="settings-hint">选择您偏好的网易云官方榜单，探索雷达将从中随机抽选推荐歌曲。</p>
+                <div id="radarGenreList" class="genre-grid">
+                    <!-- 榜单复选框将通过 JS 动态生成 -->
+                </div>
+            </section>
+            <section class="settings-section">
+                <h3>系统与调试</h3>
+                <p class="settings-hint">开启调试日志浮层便于移动端排错；也可手动从 Cloudflare D1 漫游最新数据。</p>
+                <div class="settings-actions-group">
+                    <button type="button" id="toggleDebugBtn" class="settings-action-btn">
+                        <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></svg>
+                        <span id="toggleDebugText">开启调试模式</span>
+                    </button>
+                    <button type="button" id="manualSyncBtn" class="settings-action-btn">
+                        <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                        <span id="manualSyncText">立即从云端漫游同步</span>
+                    </button>
+                </div>
+            </section>
+        </div>
+        <div class="modal-footer">
+            <button id="saveSettingsBtn" class="save-settings-btn">保存设置</button>
+        </div>
+    </div>
+</div>
+
+<!-- 歌单详情模态框 -->
+<div id="playlistDetailModal" class="modal-overlay" aria-hidden="true" hidden>
+    <div class="modal-content playlist-detail-content">
+        <div class="modal-header">
+            <h2>歌单详情</h2>
+            <button id="closePlaylistDetailBtn" class="close-modal-btn" aria-label="关闭详情">
+                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body playlist-modal-body">
+            <div id="modalPlaylistHeader"></div>
+            <div class="modal-pl-actions-bar">
+                <button type="button" id="modalPlayAllBtn" class="modal-btn-primary">
+                    <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5.5v13a1.5 1.5 0 0 0 2.3 1.28l10.5-6.5a1.5 1.5 0 0 0 0-2.56L9.3 4.22A1.5 1.5 0 0 0 7 5.5z"/></svg>
+                    <span>播放全部</span>
+                </button>
+                <button type="button" id="modalAppendAllBtn" class="modal-btn-secondary">
+                    <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                    <span>追加到列表</span>
+                </button>
+            </div>
+            <div class="modal-pl-scroll">
+                <div id="modalPlaylistSongs" class="modal-pl-song-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 歌单分类矩阵大厅抽屉 (全屏/半屏分类大厅) -->
+<div id="categoryPickerModal" class="modal-overlay" aria-hidden="true" hidden>
+    <div class="modal-content category-picker-content">
+        <div class="modal-header">
+            <div class="category-modal-title-wrap">
+                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+                <h2>歌单全部分类</h2>
+            </div>
+            <button id="closeCategorySheetBtn" class="close-modal-btn" aria-label="关闭分类大厅">
+                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+        <div class="category-modal-body" id="categoryPickerSheetList">
+            <!-- 按分组动态生成分类矩阵 -->
+        </div>
+    </div>
+</div>
+
+<!-- 通知容器 -->
+<div id="notification" class="notification"></div>
+
+<!-- 调试信息容器 -->
+<div id="debugInfo" class="debug-info">
+    <div class="debug-info-header" id="debugInfoHeader" title="按住拖拽移动，双击折叠/展开">
+        <span class="debug-info-title"><i class="fas fa-terminal"></i> Solara 调试台</span>
+        <div class="debug-info-actions">
+            <button type="button" id="minimizeDebugLogBtn" class="debug-tool-btn" title="折叠/展开横条">－</button>
+            <button type="button" id="clearDebugLogBtn" class="debug-tool-btn" title="清空日志">清空</button>
+            <button type="button" id="closeDebugLogBtn" class="debug-tool-btn" title="关闭控制台">✕</button>
+        </div>
+    </div>
+    <div id="debugInfoContent" class="debug-info-content"></div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script type="module" src="js/app.js?v=2.9.0"></script>
+<script>
+    if (isMobileDevice()) {
+        const mobileScript = document.createElement('script');
+        mobileScript.type = 'module';
+        mobileScript.src = 'js/mobile.js?v=2.9.0';
+        document.body.appendChild(mobileScript);
+    }
+</script>
+</body>
+</html>

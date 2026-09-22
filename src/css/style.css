@@ -1,0 +1,17 @@
+/**
+ * Solara 主样式入口文件 (通过原生 @import 聚合模块化样式)
+ */
+
+/* 1. 设计系统 Tokens 与主题材质 */
+@import url("tokens/theme.css");
+
+/* 2. 基础规范与舞台排版 */
+@import url("layout/base.css");
+@import url("layout/stage.css");
+
+/* 3. 核心功能组件 */
+@import url("components/search.css");
+@import url("components/player-stage.css");
+@import url("components/controls.css");
+@import url("components/modals.css");
+@import url("components/square.css");

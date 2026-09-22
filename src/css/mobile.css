@@ -1,0 +1,25 @@
+/**
+ * Solara Mobile UI - 主样式入口文件 (通过原生 @import 聚合模块化样式)
+ * 基于 Apple Glassmorphism & WWDC Fluid Interfaces 准则全新重塑
+ */
+
+/* 1. 基础规范、视口约束、极光背景与 Toolbar 顶栏 */
+@import url("mobile/base.css");
+
+/* 2. 主舞台大封面、动感歌词、歌曲元信息与动态音浪 */
+@import url("mobile/stage.css");
+
+/* 3. 悬浮底栏控制台、进度条与等距正圆播放控件组 */
+@import url("mobile/controls.css");
+
+/* 4. 纯净遮罩层、iOS 原生 Bottom Sheet 抽屉与高对比度列表 */
+@import url("mobile/sheet.css");
+
+/* 5. Spotlight 沉浸聚焦全屏搜索面板与搜索结果卡片 */
+@import url("mobile/search.css");
+
+/* 6. 系统通知微胶囊与设置弹窗适配 */
+@import url("mobile/modals.css?v=2.7.0");
+
+/* 7. 歌单广场沉浸全屏大厅与分类瀑布流 */
+@import url("mobile/square.css?v=2.7.0");

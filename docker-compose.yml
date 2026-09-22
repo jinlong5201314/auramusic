@@ -1,0 +1,14 @@
+services:
+  solara:
+    image: ghcr.io/akudamatata/solara:latest
+    container_name: solara
+    restart: always
+    init: true
+    ports:
+      - "8080:8787"
+    environment:
+      # 聚合音乐 API 地址（可随时修改为自建接口）
+      - API_BASE_URL=https://music-api.gdstudio.xyz/api.php
+    volumes:
+      - ./data:/data
+      - ./src:/app

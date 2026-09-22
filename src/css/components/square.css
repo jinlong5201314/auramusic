@@ -1,0 +1,756 @@
+/**
+ * Solara 歌单广场 (Square) 全景沉浸式大厅样式规范 (Apple 流体拟态设计)
+ */
+
+/* ─── 顶栏快捷入口按钮 ────────────────────────────────────────────── */
+.header-square-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid var(--apple-glass-border);
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--text-color);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s var(--spring-smooth, ease);
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.header-square-btn .apple-svg-icon {
+    width: 15px;
+    height: 15px;
+    color: var(--primary-color);
+}
+
+.header-square-btn:hover {
+    background: rgba(255, 255, 255, 0.35);
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.dark-mode .header-square-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.dark-mode .header-square-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: var(--primary-color);
+}
+
+/* ─── 歌单广场独立大厅全景舞台 ───────────────────────────────────── */
+.square-area {
+    grid-area: square;
+    background: var(--component-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-radius: 20px;
+    padding: 16px 20px;
+    border: 1px solid var(--apple-glass-border);
+    border-top: 1px solid var(--apple-glass-border-top);
+    box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.12);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+    position: relative;
+    animation: squareFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes squareFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.99);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.container.square-mode .square-area {
+    display: flex !important;
+}
+
+/* ─── 顶部导航控制条 ──────────────────────────────────────────────── */
+.square-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--apple-glass-border);
+    flex-shrink: 0;
+}
+
+.square-brand-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.square-brand-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.square-brand-badge .apple-svg-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--primary-color);
+}
+
+.square-platform-wrap {
+    display: flex;
+    align-items: center;
+}
+
+.square-platform-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: rgba(255, 255, 255, 0.22);
+    border: 1px solid var(--apple-glass-border);
+    border-radius: 10px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-color);
+    outline: none;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all 0.25s ease;
+}
+
+.dark-mode .square-platform-select {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.square-platform-select:hover,
+.square-platform-select:focus {
+    background: rgba(255, 255, 255, 0.35);
+    border-color: var(--primary-color);
+}
+
+.square-mobile-cat-bar {
+    display: none;
+}
+
+/* ─── 分类横向导航条与平滑翻页按钮 ───────────────────────────────── */
+.square-nav-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 860px;
+    position: relative;
+    padding: 0 4px;
+}
+
+.square-nav-scroll-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--apple-glass-border);
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--text-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s var(--spring-snappy, ease);
+    outline: none;
+}
+
+.square-nav-scroll-btn .apple-svg-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.square-nav-scroll-btn:hover {
+    background: rgba(255, 255, 255, 0.45);
+    border-color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.square-nav-scroll-btn:active {
+    transform: scale(0.95);
+}
+
+.dark-mode .square-nav-scroll-btn {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .square-nav-scroll-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.square-categories-bar {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 2px;
+}
+
+.square-categories-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.square-tag {
+    appearance: none;
+    border: 1px solid var(--apple-glass-border);
+    background: rgba(255, 255, 255, 0.18);
+    color: var(--text-secondary-color);
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.dark-mode .square-tag {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.square-tag:hover {
+    background: rgba(255, 255, 255, 0.32);
+    color: var(--text-color);
+    transform: translateY(-1px);
+}
+
+.square-tag.active {
+    background: var(--primary-color);
+    color: #ffffff;
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px var(--palette-glow, rgba(16, 163, 127, 0.35));
+}
+
+/* ─── 右侧搜索与关闭/返回动作区 ────────────────────────────────────────── */
+.square-action-section {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.square-search-box {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.25);
+    border: 1px solid var(--apple-glass-border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 10px;
+    height: 32px;
+    padding: 0 4px 0 10px;
+    transition: all 0.2s ease;
+}
+
+.dark-mode .square-search-box {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.square-search-box:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.15);
+}
+
+.square-search-input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 12.5px;
+    color: var(--text-color);
+    width: 140px;
+    transition: width 0.25s ease;
+}
+
+.square-search-input:focus {
+    width: 190px;
+}
+
+.square-search-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    transition: all 0.15s ease;
+}
+
+.square-search-btn:hover {
+    color: var(--primary-color);
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.dark-mode .square-search-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.square-search-btn .apple-svg-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.close-square-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid var(--apple-glass-border);
+    background: rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--text-color);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.close-square-btn .apple-svg-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.close-square-btn:hover {
+    background: rgba(255, 255, 255, 0.38);
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.dark-mode .close-square-btn {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.dark-mode .close-square-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+/* ─── 歌单卡片宽屏网格与滚动区域 ─────────────────────────────────── */
+.square-content-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px 4px 24px;
+    scrollbar-width: thin;
+    min-height: 0;
+}
+
+.square-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 20px 16px;
+}
+
+.square-card {
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--apple-glass-border);
+    border-radius: 18px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.dark-mode .square-card {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.square-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.24);
+    box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.16);
+    border-color: var(--primary-color);
+}
+
+.dark-mode .square-card:hover {
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.45);
+}
+
+.square-card-cover-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.square-card-cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.square-card:hover .square-card-cover {
+    transform: scale(1.06);
+}
+
+.square-card-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.58);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2.5px 8px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.square-card-play-btn {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: #ffffff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+    transition: all 0.25s var(--spring-smooth, ease);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+.square-card-play-btn svg {
+    width: 17px;
+    height: 17px;
+    margin-left: 2px;
+}
+
+.square-card:hover .square-card-play-btn {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.square-card-info {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.square-card-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1.38;
+    color: var(--text-color);
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.square-card-creator {
+    font-size: 11.5px;
+    color: var(--text-tertiary-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 状态提示 */
+.square-loading-skeleton,
+.square-empty-state,
+.square-error-state {
+    grid-column: 1 / -1;
+    padding: 64px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    color: var(--text-secondary-color);
+    font-size: 14px;
+}
+
+.square-loading-skeleton i,
+.square-empty-state i,
+.square-error-state i {
+    font-size: 32px;
+    opacity: 0.65;
+}
+
+/* ─── 歌单详情模态框 (Playlist Modal) ────────────────────────────── */
+.playlist-detail-content {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(36px) saturate(190%);
+    -webkit-backdrop-filter: blur(36px) saturate(190%);
+    border: 1px solid var(--apple-glass-border);
+    border-top: 1px solid var(--apple-glass-border-top);
+    border-radius: 22px;
+    max-width: 680px;
+    width: 90vw;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 64px -12px rgba(0, 0, 0, 0.22);
+    transform: scale(0.95) translateY(12px);
+    transition: transform 0.35s var(--spring-snappy), opacity 0.3s ease;
+    overflow: hidden;
+    box-sizing: border-box;
+    padding: 20px 24px;
+}
+
+.dark-mode .playlist-detail-content {
+    background: rgba(30, 34, 42, 0.92);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 32px 72px -16px rgba(0, 0, 0, 0.7);
+}
+
+.modal-overlay.show .playlist-detail-content {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+.playlist-modal-body {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    gap: 16px;
+    padding-top: 8px;
+}
+
+.modal-pl-meta {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 8px 0;
+}
+
+.modal-pl-cover {
+    width: 120px;
+    height: 120px;
+    border-radius: 16px;
+    object-fit: cover;
+    box-shadow: 0 10px 24px -6px rgba(0, 0, 0, 0.25);
+    flex-shrink: 0;
+}
+
+.modal-pl-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
+}
+
+.modal-pl-platform-badge {
+    align-self: flex-start;
+    background: rgba(16, 163, 127, 0.15);
+    color: var(--primary-color);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.modal-pl-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 0;
+    line-height: 1.3;
+}
+
+.modal-pl-creator {
+    font-size: 12px;
+    color: var(--text-secondary-color);
+    margin: 0;
+}
+
+.modal-pl-desc {
+    font-size: 12px;
+    color: var(--text-tertiary-color);
+    margin: 0;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.modal-pl-actions-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--apple-glass-border);
+}
+
+.modal-btn-primary,
+.modal-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.modal-btn-primary {
+    background: var(--primary-color);
+    color: #ffffff;
+    box-shadow: 0 4px 14px var(--palette-glow, rgba(16, 163, 127, 0.35));
+}
+
+.modal-btn-primary:hover {
+    opacity: 0.92;
+    transform: translateY(-1px);
+}
+
+.modal-btn-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid var(--apple-glass-border);
+    color: var(--text-color);
+    backdrop-filter: blur(10px);
+}
+
+.modal-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.32);
+    transform: translateY(-1px);
+}
+
+.modal-pl-scroll {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 380px;
+    scrollbar-width: thin;
+}
+
+.modal-pl-song-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.modal-pl-song-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.modal-pl-song-row:hover {
+    background: rgba(255, 255, 255, 0.22);
+    transform: translateX(4px);
+}
+
+.modal-pl-song-idx {
+    width: 24px;
+    font-size: 12px;
+    color: var(--text-tertiary-color);
+    text-align: center;
+    font-weight: 500;
+}
+
+.modal-pl-song-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.modal-pl-song-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.modal-pl-song-artist {
+    font-size: 11px;
+    color: var(--text-secondary-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.modal-pl-single-play {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    padding: 4px;
+    opacity: 0.8;
+    transition: opacity 0.15s ease;
+}
+
+.modal-pl-song-row:hover .modal-pl-single-play {
+    opacity: 1;
+}
+
+.modal-pl-loading,
+.modal-pl-empty,
+.modal-pl-error {
+    padding: 36px 12px;
+    text-align: center;
+    color: var(--text-secondary-color);
+    font-size: 13px;
+}

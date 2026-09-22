@@ -1,0 +1,13 @@
+# Docker persistence
+data/
+.dev.vars
+
+# Cloudflare Wrangler local state
+.wrangler/
+
+# Node.js dependencies (standalone server)
+server/node_modules/
+
+# Local backups and temporary scripts
+*.backup.js
+

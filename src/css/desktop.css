@@ -1,0 +1,190 @@
+/* Desktop-only overrides for mobile UI chrome */
+html.desktop-view .mobile-status-bar,
+html.desktop-view .mobile-toolbar,
+html.desktop-view .mobile-panel-header,
+html.desktop-view .mobile-overlay-scrim,
+html.desktop-view .mobile-quality-chip,
+html.desktop-view .mobile-close-btn,
+html.desktop-view .mobile-turntable__tonearm,
+html.desktop-view .mobile-turntable__label,
+html.desktop-view .mobile-inline-lyrics {
+    display: none;
+}
+
+/* Remove circular decoration from playlist action buttons on desktop */
+html.desktop-view .playlist-action-btn {
+    width: auto;
+    height: auto;
+    padding: 6px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    box-shadow: none;
+    color: var(--text-secondary-color);
+    transition: color 0.2s ease;
+}
+
+html.desktop-view body.dark-mode .playlist-action-btn {
+    background: none;
+    border: none;
+    box-shadow: none;
+    color: var(--text-secondary-color);
+}
+
+html.desktop-view .playlist-action-btn:hover:not(:disabled),
+html.desktop-view .playlist-action-btn:focus-visible:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+    filter: none;
+    border: none;
+    color: var(--primary-color);
+}
+
+html.desktop-view .playlist-action-btn--clear {
+    color: rgba(231, 76, 60, 0.85);
+}
+
+html.desktop-view .playlist-action-btn--clear:hover:not(:disabled),
+html.desktop-view .playlist-action-btn--clear:focus-visible:not(:disabled) {
+    color: var(--warning-color);
+}
+
+html.desktop-view .playlist-action-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+html.desktop-view .playlist-action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ===== 桌面端：导入已选按钮 - 自然并排在搜索按钮右侧，高度对齐，统一Apple风格 ===== */
+
+/* 默认未搜索时隐藏 */
+html.desktop-view .search-results-toolbar {
+    display: none;
+}
+
+/* 搜索模式下优雅融入搜索栏单行流中 */
+html.desktop-view .container.search-mode .search-results-toolbar {
+    display: inline-flex;
+    align-items: center;
+    position: static;
+    margin: 0;
+    padding: 0;
+    z-index: 2;
+    flex-shrink: 0;
+}
+
+html.desktop-view .search-results-toolbar .import-dropdown {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    height: 38px;
+    width: auto;
+}
+
+html.desktop-view .search-results-toolbar .import-selected-btn {
+    height: 38px;
+    box-sizing: border-box;
+    padding: 0 16px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s var(--spring-smooth);
+    border: 1px solid var(--apple-glass-border);
+    background: var(--component-bg);
+    backdrop-filter: var(--apple-glass-blur);
+    -webkit-backdrop-filter: var(--apple-glass-blur);
+    color: var(--text-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    user-select: none;
+}
+
+html.desktop-view .search-results-toolbar .import-selected-btn:hover:not(:disabled) {
+    background: var(--apple-glass-hover);
+    border-color: var(--apple-glass-border-top);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+html.desktop-view .search-results-toolbar .import-selected-btn:active:not(:disabled) {
+    transform: scale(0.96);
+}
+
+/* 激活态（已选择歌曲）高亮主题色 */
+html.desktop-view .search-results-toolbar .import-selected-btn:not(:disabled) {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+html.desktop-view .dark-mode .search-results-toolbar .import-selected-btn:not(:disabled) {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    box-shadow: 0 0 12px var(--palette-glow);
+}
+
+html.desktop-view .search-results-toolbar .import-selected-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* 搜索结果列表自然顶格排布，彻底移除突兀的52px空洞，彻底消除列表与按钮遮挡冲突 */
+html.desktop-view .search-results-list {
+    padding-top: 6px;
+}
+
+html.desktop-view .search-results {
+    gap: 0;
+}
+
+/* 默认未搜索时隐藏关闭按钮 */
+html.desktop-view .close-search-btn {
+    display: none;
+}
+
+/* 搜索模式下优雅融入搜索栏单行流中，Apple 拟态材质 */
+html.desktop-view .container.search-mode .close-search-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    box-sizing: border-box;
+    border-radius: 10px;
+    border: 1px solid var(--apple-glass-border);
+    background: var(--component-bg);
+    backdrop-filter: var(--apple-glass-blur);
+    -webkit-backdrop-filter: var(--apple-glass-blur);
+    color: var(--text-secondary-color);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s var(--spring-smooth);
+    flex-shrink: 0;
+}
+
+html.desktop-view .container.search-mode .close-search-btn:hover {
+    background: var(--item-hover-bg);
+    border-color: var(--apple-glass-border-top);
+    color: var(--text-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+html.desktop-view .container.search-mode .close-search-btn:active {
+    transform: scale(0.92);
+}
+
+html.desktop-view .container.search-mode .close-search-btn .apple-svg-icon {
+    width: 16px;
+    height: 16px;
+}
+

@@ -1,0 +1,261 @@
+/* ==========================================================================
+   Solara Mobile UI - 1. 基础规范、极光背景、App容器与Toolbar顶栏
+   ========================================================================== */
+
+/* ─── 1. 移动端根基底与视口防抖 ─────────────────────────────────────────── */
+
+html.mobile-view,
+body.mobile-view {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: var(--mobile-vh, 100dvh);
+    min-height: var(--mobile-vh, 100dvh);
+    overflow: hidden;
+    touch-action: pan-y;
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body.mobile-view {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    background: transparent;
+    font-family: var(--font-main);
+    color: var(--text-color);
+    box-sizing: border-box;
+    position: fixed;
+    inset: 0;
+}
+
+/* ─── 2. 移动端全屏流体极光舞台 (高性能静态色彩网格 + 切歌平滑淡入) ──────────────── */
+
+body.mobile-view .background-stage {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+    transform: translateZ(0); /* 开启独立硬件合成层 */
+}
+
+/* 消除移动端多重嵌套的重度高斯模糊滤镜，极大释放 GPU 压力与发热 */
+body.mobile-view .background-stage__layer {
+    filter: none !important;
+    transform: none !important;
+}
+
+body.mobile-view.dark-mode .background-stage__layer {
+    filter: none !important;
+}
+
+/* 移动端极光网格：采用径向光晕自然扩散，取消暴力模糊，改为纯硬件加速的柔和弥散 */
+body.mobile-view .aurora-mesh {
+    inset: -10%;
+    width: 120%;
+    height: 120%;
+    filter: blur(32px) saturate(135%) !important;
+    opacity: 0.85;
+    transform: translateZ(0);
+}
+
+/* 核心：彻底停止光球在移动端的 120Hz 无限旋转和形变动画！
+   让光球固定在四角构成天然柔和的静态色彩网格背景，GPU 占用由 100% 暴降至 0%，
+   使得上层所有毛玻璃（顶栏、底栏、歌单抽屉）可以完美命中 WebKit 纹理缓存，机身彻底冰凉且动画达到满帧 120fps！ */
+body.mobile-view .aurora-orb {
+    animation: none !important;
+    will-change: auto !important;
+    transform: translateZ(0);
+}
+
+body.mobile-view .aurora-orb--1 {
+    width: 80vw;
+    height: 80vw;
+    top: -10vw;
+    left: -10vw;
+    opacity: 0.9;
+}
+
+body.mobile-view .aurora-orb--2 {
+    width: 80vw;
+    height: 80vw;
+    top: -5vw;
+    right: -10vw;
+    opacity: 0.85;
+}
+
+body.mobile-view .aurora-orb--3 {
+    width: 75vw;
+    height: 75vw;
+    bottom: 5vw;
+    right: -5vw;
+    opacity: 0.8;
+}
+
+body.mobile-view .aurora-orb--4 {
+    width: 75vw;
+    height: 75vw;
+    bottom: -5vw;
+    left: -5vw;
+    opacity: 0.85;
+}
+
+/* 彻底移除全屏遮罩上的 backdrop-filter，避免在背景之上再做全屏高斯模糊 */
+body.mobile-view .background-stage__glass-scrim {
+    display: block !important;
+    position: absolute;
+    inset: 0;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    /* 采用纯渐变自然融合，零 GPU 模糊开销 */
+    background: radial-gradient(circle at 50% 35%, rgba(245, 247, 250, 0.05) 0%, rgba(235, 238, 244, 0.15) 100%);
+    transition: background 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.mobile-view.dark-mode .background-stage__glass-scrim {
+    background: radial-gradient(circle at 50% 30%, transparent 20%, rgba(6, 7, 10, 0.55) 100%);
+}
+
+/* ─── 3. 移动端主容器 (App Shell) ───────────────────────────────────────── */
+
+body.mobile-view .container {
+    width: 100%;
+    max-width: 540px;
+    height: var(--mobile-vh, 100dvh);
+    min-height: var(--mobile-vh, 100dvh);
+    max-height: none;
+    margin: 0 auto;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: calc(env(safe-area-inset-top, 0px) + 8px) clamp(16px, 4.5vw, 24px) calc(env(safe-area-inset-bottom, 0px) + 12px);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+    overflow: hidden;
+    grid-template-areas: none;
+    grid-template-rows: none;
+    grid-template-columns: none;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* 隐藏桌面端专有的大头部元素与标语 */
+body.mobile-view .header,
+body.mobile-view .theme-switch-wrapper,
+body.mobile-view .warning {
+    display: none !important;
+}
+
+/* ─── 4. 浮动顶部导航栏 (iOS Floating Navigation Bar) ───────────────────── */
+
+body.mobile-view .mobile-toolbar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 48px;
+    min-height: 48px;
+    padding: 0 4px;
+    margin-bottom: 8px;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+body.mobile-view .mobile-toolbar__title {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    user-select: none;
+    cursor: pointer;
+    z-index: 1;
+    max-width: calc(100% - 190px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: auto;
+}
+
+body.mobile-view .mobile-toolbar__title::after {
+    display: none !important;
+}
+
+body.mobile-view .mobile-toolbar__leading,
+body.mobile-view .mobile-toolbar__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 2;
+}
+
+body.mobile-view .mobile-toolbar__button {
+    position: relative;
+    z-index: 2;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid var(--apple-glass-border);
+    border-top: 1px solid var(--apple-glass-border-top);
+    background: var(--component-bg);
+    backdrop-filter: var(--apple-glass-blur);
+    -webkit-backdrop-filter: var(--apple-glass-blur);
+    color: var(--text-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: transform 0.15s var(--spring-snappy), background 0.25s ease, border-color 0.25s ease;
+    position: relative;
+}
+
+body.mobile-view .mobile-toolbar__button .apple-svg-icon {
+    width: 19px;
+    height: 19px;
+}
+
+body.mobile-view .mobile-toolbar__button:active {
+    transform: scale(0.92);
+}
+
+/* 移动端深浅色主题图标精准控制：杜绝深色下不可见 */
+body.mobile-view .theme-icon--sun {
+    display: block !important;
+    opacity: 1 !important;
+    color: #f59e0b !important;
+    transform: scale(1) rotate(0deg) !important;
+}
+
+body.mobile-view .theme-icon--moon {
+    display: none !important;
+    opacity: 0 !important;
+}
+
+body.mobile-view.dark-mode .theme-icon--sun {
+    display: none !important;
+    opacity: 0 !important;
+}
+
+body.mobile-view.dark-mode .theme-icon--moon {
+    display: block !important;
+    opacity: 1 !important;
+    color: #818cf8 !important;
+    transform: scale(1) rotate(0deg) !important;
+}

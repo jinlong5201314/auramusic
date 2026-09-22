@@ -1,0 +1,15 @@
+# 依赖与临时编译产物
+node_modules/
+dist/
+data/
+*.log
+.DS_Store
+
+# 敏感与凭证信息
+.env
+.env.*
+*-token.txt
+*-key.txt
+*.db
+*.db-shm
+*.db-wal
