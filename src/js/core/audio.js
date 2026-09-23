@@ -276,6 +276,15 @@ export function cancelPendingPlayback() {
     currentPlaybackToken++;
 }
 
+export function setResolveStatus(dom, status, text) {
+    if (!dom || !dom.resolveStatusPill) return;
+    dom.resolveStatusPill.style.display = "inline-flex";
+    dom.resolveStatusPill.className = `resolve-status-pill status-${status}`;
+    if (dom.resolveText) {
+        dom.resolveText.textContent = text;
+    }
+}
+
 export async function playSong(song, options = {}, state, dom, callbacks = {}, debugLogger = null) {
     const myToken = ++currentPlaybackToken;
     const { autoplay = true, startTime = 0, preserveProgress = false, isRetry = false } = options;
@@ -297,12 +306,16 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
 
         const cacheKey = `${song.source || 'netease'}_${song.id}_${quality}`;
         let originalAudioUrl = null;
+        let resolvedSourceChannel = null;
+
+        setResolveStatus(dom, "resolving", "正在解析音频流...");
 
         // 1. 优先命中前端内存短期直链缓存（0 网络请求）
         if (!isRetry && audioUrlMemoryCache.has(cacheKey)) {
             const cachedItem = audioUrlMemoryCache.get(cacheKey);
             if (Date.now() - cachedItem.timestamp < AUDIO_URL_CACHE_TTL && cachedItem.url) {
                 originalAudioUrl = cachedItem.url;
+                resolvedSourceChannel = cachedItem.sourceChannel || "本地极速缓存";
                 log(`[音频缓存] 命中内存直链: ${song.name} (${quality}k)，省去 1 次网络请求`);
             } else {
                 audioUrlMemoryCache.delete(cacheKey);
@@ -313,11 +326,15 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
         if (!originalAudioUrl) {
             // 2.0 优先尝试激活的洛雪自定义音源订阅（若已配置且开启）
             if (lxPluginEngine && lxPluginEngine.isEnabled) {
+                const activeSrc = lxPluginEngine.getActiveSource();
+                const srcName = activeSrc?.name || "自定义音源";
                 try {
+                    setResolveStatus(dom, "resolving", `音源【${srcName}】解析中...`);
                     log(`[自定义音源] 正在尝试通过订阅插件解析: 《${song.name}》...`);
                     const customUrl = await lxPluginEngine.resolveAudioUrl(song, quality);
                     if (customUrl) {
                         originalAudioUrl = customUrl;
+                        resolvedSourceChannel = `洛雪源: ${srcName}`;
                         log(`[自定义音源] 解析成功，优先使用插件音轨`);
                     }
                 } catch (lxErr) {
@@ -327,6 +344,7 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
 
             // 2.1 若自定义音源未开启或解析未命中，进入 Solara 原生多源直连与全网兜底
             if (!originalAudioUrl) {
+                setResolveStatus(dom, "resolving", "原生直连与全网调度中...");
                 const nonNeteaseSources = ['qq', 'kuwo', 'kugou', 'tx', 'kw', 'kg', 'mg'];
                 const needsCrossMatch = nonNeteaseSources.includes(song.source) || nonNeteaseSources.includes(song.platform);
                 if (needsCrossMatch && !song._matchedNetease) {
@@ -364,14 +382,20 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
                 }
 
                 originalAudioUrl = audioData.url;
+                const sourceMap = { netease: "网易云", qq: "QQ音乐", tx: "QQ音乐", kuwo: "酷我", kw: "酷我", kugou: "酷狗", kg: "酷狗", migu: "咪咕", mg: "咪咕" };
+                const channelName = sourceMap[song.source] || song.source_name || "官方通道";
+                resolvedSourceChannel = `原生: ${channelName}`;
             }
 
             // 存入短期缓存（15分钟有效）
             audioUrlMemoryCache.set(cacheKey, {
                 url: originalAudioUrl,
+                sourceChannel: resolvedSourceChannel,
                 timestamp: Date.now()
             });
         }
+
+        setResolveStatus(dom, "resolving", `缓冲中 (${resolvedSourceChannel || "音频通道"})...`);
 
         log(`[音频地址] 解析就绪: ${originalAudioUrl.slice(0, 50)}...`);
         const proxiedAudioUrl = buildAudioProxyUrl(originalAudioUrl);
@@ -447,6 +471,7 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
 
         let playPromise = null;
         log(`[音频解码] 缓冲就绪 (${autoplay ? '开始自动播放' : '静音待播'})`);
+        setResolveStatus(dom, "success", `${resolvedSourceChannel || "音频已就绪"}`);
 
         if (autoplay) {
             playPromise = dom.audioPlayer.play();
@@ -480,10 +505,12 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
         }
     } catch (error) {
         console.error('播放歌曲失败:', error);
+        setResolveStatus(dom, "error", `加载失败: ${error?.message || "网络异常/版权受限"}`);
         // 清除当前歌曲在内存中的直链缓存，杜绝命中坏链
         const badCacheKey = `${song.source || 'netease'}_${song.id}_${state.playbackQuality || '320'}`;
         audioUrlMemoryCache.delete(badCacheKey);
         if (!isRetry) {
+            setResolveStatus(dom, "resolving", "正在尝试备用链路重试...");
             return playSong(song, { ...options, isRetry: true }, state, dom, callbacks, debugLogger);
         }
         throw error;

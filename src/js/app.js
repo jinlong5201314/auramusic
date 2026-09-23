@@ -165,6 +165,7 @@ export async function updateCurrentSongInfo(song, options = {}) {
     if (!song) {
         dom.currentSongTitle.textContent = "选择一首歌曲开始播放";
         dom.currentSongArtist.textContent = "未知艺术家";
+        if (dom.resolveStatusPill) dom.resolveStatusPill.style.display = "none";
         showAlbumCoverPlaceholder(dom, state);
         updateFavoriteIcons(state, dom);
         return;
