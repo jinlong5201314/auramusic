@@ -93,17 +93,19 @@ body.mobile-view.dark-mode .settings-content {
 
 /* 移动端音源订阅适配 */
 body.mobile-view .lx-source-input-row {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
 }
 
 body.mobile-view .lx-source-btn {
-    width: 100%;
+    width: auto !important;
+    flex-shrink: 0;
     justify-content: center;
 }
 
 body.mobile-view .lx-source-status-box {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
 }
