@@ -256,14 +256,19 @@ async function fetchUnifiedLyric(source: string, id: string, name: string, artis
 
       for (const q of queries) {
         if (!q) continue;
-        // 5.1 优先通过 GD Studio 网易云聚合接口（境外 CDN 0 拦截，响应极快）
+        // 5.1 优先通过 GD Studio 网易云聚合接口（带严格歌手比对）
         try {
-          const gdSearchUrl = `${apiBaseUrl}?types=search&source=netease&name=${encodeURIComponent(q)}&count=3`;
+          const gdSearchUrl = `${apiBaseUrl}?types=search&source=netease&name=${encodeURIComponent(q)}&count=6`;
           const gdSearchResp = await fetch(gdSearchUrl, { headers: { "User-Agent": "Meting/1.5.0", Accept: "application/json" } });
           if (gdSearchResp.ok) {
             const gdSongs: any = await gdSearchResp.json();
             if (Array.isArray(gdSongs)) {
               for (const gds of gdSongs) {
+                // 严格比对歌手名，杜绝“全网找歌君”、“沈幼楚”等无关翻唱
+                const gdsArtist = Array.isArray(gds.artist) ? gds.artist.join(" ") : String(gds.artist || "");
+                if (artist && !isArtistMatch(artist, gdsArtist)) {
+                  continue;
+                }
                 const lyricTargetId = gds.lyric_id || gds.id;
                 if (lyricTargetId) {
                   const lUrl = `${apiBaseUrl}?types=lyric&source=netease&id=${lyricTargetId}`;
@@ -279,8 +284,8 @@ async function fetchUnifiedLyric(source: string, id: string, name: string, artis
           }
         } catch {}
 
-        // 5.2 尝试酷狗歌词兜底
-        const kgFallback = await fetchKugouLyric("", q, "");
+        // 5.2 尝试酷狗歌词兜底（带歌手与歌名）
+        const kgFallback = await fetchKugouLyric("", q, artist);
         if (kgFallback) return kgFallback;
       }
     } catch (err) {

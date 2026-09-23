@@ -347,16 +347,25 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
                 setResolveStatus(dom, "resolving", "原生直连与全网调度中...");
                 const nonNeteaseSources = ['qq', 'kuwo', 'kugou', 'tx', 'kw', 'kg', 'mg'];
                 const needsCrossMatch = nonNeteaseSources.includes(song.source) || nonNeteaseSources.includes(song.platform);
-                if (needsCrossMatch && !song._matchedNetease) {
+                // 彻底杜绝盲目覆盖 lyric_id：QQ/酷狗/酷我本身有原生精确歌词（如 tx 的 songmid），绝不能盲目把 lyric_id 篡改为网易云搜出来的无关/翻唱歌曲 ID！
+                // 仅当曲目本身完全没有 lyric_id / id 时，才作为最后的辅助候选，且必须严格校验歌手匹配
+                if (needsCrossMatch && !song._matchedNetease && !song.lyric_id) {
                     try {
                         log(`[音源增强] 正在为【${song.source_name || song.platform || song.source}】曲目《${song.name}》预检索最佳音频流...`);
                         const queryText = `${song.name} ${song.artist}`.trim();
                         const matched = await API.search(queryText, 'wy', 3);
                         if (Array.isArray(matched) && matched.length > 0) {
-                            const best = matched[0];
-                            song.lyric_id = best.lyric_id || best.id;
-                            if (!song.pic && best.pic) song.pic = best.pic;
-                            song.pic_id = best.pic_id || best.id;
+                            const rawTargetArtist = String(song.artist || "").toLowerCase();
+                            // 严格比对歌手名，杜绝“全网找歌君”等无关翻唱
+                            const best = matched.find(item => {
+                                const candArtist = String(item.artist || "").toLowerCase();
+                                return rawTargetArtist && (candArtist.includes(rawTargetArtist) || rawTargetArtist.includes(candArtist));
+                            }) || null;
+                            if (best) {
+                                song.lyric_id = best.lyric_id || best.id;
+                                if (!song.pic && best.pic) song.pic = best.pic;
+                                song.pic_id = best.pic_id || best.id;
+                            }
                             song._matchedNetease = true;
                         }
                     } catch (matchErr) {

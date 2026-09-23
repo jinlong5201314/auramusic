@@ -5,10 +5,15 @@
 import { API } from "../constants.js";
 
 export function parseLyrics(lyricText, state) {
+    if (!lyricText) {
+        state.lyricsData = [];
+        return;
+    }
     const lines = lyricText.split('\n');
     const lyrics = [];
 
     lines.forEach(line => {
+        // 匹配标准 LRC 时间戳，如 [00:17.82] 或 [01:23.070]
         const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/);
         if (match) {
             const minutes = parseInt(match[1]);
@@ -17,7 +22,8 @@ export function parseLyrics(lyricText, state) {
             const time = minutes * 60 + seconds + milliseconds / 1000;
             const text = match[4].trim();
 
-            if (text) {
+            // 过滤空行、制作信息（如作词/作曲/OP等），避免占据歌词主视图
+            if (text && !text.startsWith('【') && !text.endsWith('】')) {
                 lyrics.push({ time, text });
             }
         }
