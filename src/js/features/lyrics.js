@@ -33,6 +33,9 @@ export function setLyricsContentHtml(html, dom) {
     if (dom.mobileInlineLyricsContent) {
         dom.mobileInlineLyricsContent.innerHTML = html;
     }
+    if (dom.immersiveLyricsContent) {
+        dom.immersiveLyricsContent.innerHTML = html || '<div class="lyrics-placeholder">沉浸式歌词已就绪，播放即可同步显示</div>';
+    }
 }
 
 export function clearLyricsContent(state, dom, isMobileView = false, closeMobileInlineLyrics = null) {
@@ -164,6 +167,13 @@ export function syncLyrics(state, dom) {
                 inline: true,
             });
         }
+        if (dom.immersiveLyricsContent) {
+            lyricTargets.push({
+                elements: dom.immersiveLyricsContent.querySelectorAll("div[data-index]"),
+                container: dom.immersiveLyricsScroll,
+                immersive: true,
+            });
+        }
 
         lyricTargets.forEach(({ elements, container, inline }) => {
             elements.forEach((element, index) => {
@@ -282,4 +292,159 @@ export function initDesktopLyricsInteractions(state, dom) {
             }, 5000);
         }, { passive: true });
     }
+}
+
+/**
+ * 初始化 Apple Music 风格全屏沉浸式流体歌词页交互系统
+ */
+export function initImmersiveLyrics(state, dom, callbacks = {}) {
+    if (!dom.immersiveLyricsView) return;
+
+    const updateImmersiveSongMeta = () => {
+        const song = state.currentSong;
+        if (song) {
+            if (dom.immersiveSongTitle) dom.immersiveSongTitle.textContent = song.name || "选择一首歌曲开始播放";
+            if (dom.immersiveSongArtist) dom.immersiveSongArtist.textContent = song.artist || "Solara Music";
+            if (dom.immersiveCoverImg) {
+                dom.immersiveCoverImg.src = song.pic || "assets/images/default-cover.png";
+            }
+        }
+        if (dom.immersiveSourceText && dom.resolveText) {
+            dom.immersiveSourceText.textContent = dom.resolveText.textContent || "极速纯净流";
+        }
+        if (dom.immersivePlayBtn && dom.audioPlayer) {
+            const isPlaying = !dom.audioPlayer.paused && !dom.audioPlayer.ended;
+            dom.immersivePlayBtn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
+        }
+    };
+
+    const openImmersive = () => {
+        updateImmersiveSongMeta();
+        dom.immersiveLyricsView.classList.add("active");
+        dom.immersiveLyricsView.setAttribute("aria-hidden", "false");
+        state.isImmersiveOpen = true;
+        syncLyrics(state, dom);
+    };
+
+    const closeImmersive = () => {
+        dom.immersiveLyricsView.classList.remove("active");
+        dom.immersiveLyricsView.setAttribute("aria-hidden", "true");
+        state.isImmersiveOpen = false;
+    };
+
+    // 1. 打开入口绑定
+    if (dom.immersiveToggleBtn) {
+        dom.immersiveToggleBtn.addEventListener("click", () => {
+            if (state.isImmersiveOpen) closeImmersive();
+            else openImmersive();
+        });
+    }
+
+    if (dom.albumCover) {
+        dom.albumCover.style.cursor = "pointer";
+        dom.albumCover.title = "点击进入全屏沉浸歌词 (快捷键 L)";
+        dom.albumCover.addEventListener("click", openImmersive);
+    }
+
+    // 2. 关闭入口绑定
+    if (dom.closeImmersiveBtn) {
+        dom.closeImmersiveBtn.addEventListener("click", closeImmersive);
+    }
+
+    // 3. F11 浏览器全屏切换
+    if (dom.immersiveF11Btn) {
+        dom.immersiveF11Btn.addEventListener("click", () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
+        });
+    }
+
+    // 4. 沉浸式歌词点词即播 (Click to Seek)
+    if (dom.immersiveLyricsContent) {
+        dom.immersiveLyricsContent.addEventListener("click", (e) => {
+            const line = e.target.closest("div[data-time]");
+            if (!line) return;
+            const time = parseFloat(line.getAttribute("data-time"));
+            if (Number.isFinite(time) && dom.audioPlayer) {
+                state.userScrolledLyrics = false;
+                dom.audioPlayer.currentTime = time;
+                if (dom.audioPlayer.paused) {
+                    dom.audioPlayer.play().catch(() => {});
+                }
+                syncLyrics(state, dom);
+            }
+        });
+    }
+
+    // 5. 沉浸式歌词滚轮防打扰 (5秒)
+    if (dom.immersiveLyricsScroll) {
+        dom.immersiveLyricsScroll.addEventListener("wheel", () => {
+            state.userScrolledLyrics = true;
+            if (state.immersiveScrollTimeout) clearTimeout(state.immersiveScrollTimeout);
+            state.immersiveScrollTimeout = setTimeout(() => {
+                state.userScrolledLyrics = false;
+                const currentLyric = dom.immersiveLyricsContent?.querySelector(".current");
+                if (currentLyric && (!dom.audioPlayer || !dom.audioPlayer.paused)) {
+                    scrollToCurrentLyric(currentLyric, dom.immersiveLyricsScroll, dom, true);
+                }
+            }, 5000);
+        }, { passive: true });
+    }
+
+    // 6. 沉浸式迷你播放控制器
+    if (dom.immersivePlayBtn && dom.audioPlayer) {
+        dom.immersivePlayBtn.addEventListener("click", () => {
+            if (dom.audioPlayer.paused) {
+                dom.audioPlayer.play().catch(() => {});
+            } else {
+                dom.audioPlayer.pause();
+            }
+        });
+    }
+
+    if (dom.immersivePrevBtn && typeof callbacks.playPrevious === "function") {
+        dom.immersivePrevBtn.addEventListener("click", () => {
+            callbacks.playPrevious();
+            setTimeout(updateImmersiveSongMeta, 150);
+        });
+    }
+
+    if (dom.immersiveNextBtn && typeof callbacks.playNext === "function") {
+        dom.immersiveNextBtn.addEventListener("click", () => {
+            callbacks.playNext();
+            setTimeout(updateImmersiveSongMeta, 150);
+        });
+    }
+
+    // 7. 键盘快捷键监听 (ESC 退出, L 切换沉浸歌词)
+    window.addEventListener("keydown", (e) => {
+        if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+        if (e.key === "Escape" && state.isImmersiveOpen) {
+            closeImmersive();
+        } else if ((e.key === "l" || e.key === "L") && !e.ctrlKey && !e.metaKey) {
+            if (state.isImmersiveOpen) closeImmersive();
+            else openImmersive();
+        }
+    });
+
+    // 8. 监听音频播放状态变化同步按钮
+    if (dom.audioPlayer) {
+        const syncBtnState = () => {
+            if (dom.immersivePlayBtn) {
+                const isPlaying = !dom.audioPlayer.paused && !dom.audioPlayer.ended;
+                dom.immersivePlayBtn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
+            }
+        };
+        dom.audioPlayer.addEventListener("play", syncBtnState);
+        dom.audioPlayer.addEventListener("pause", syncBtnState);
+    }
+
+    return {
+        open: openImmersive,
+        close: closeImmersive,
+        updateMeta: updateImmersiveSongMeta
+    };
 }

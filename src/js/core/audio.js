@@ -334,8 +334,8 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
                     const customUrl = await lxPluginEngine.resolveAudioUrl(song, quality);
                     if (customUrl) {
                         originalAudioUrl = customUrl;
-                        resolvedSourceChannel = `洛雪源: ${srcName}`;
-                        log(`[自定义音源] 解析成功，优先使用插件音轨`);
+                        resolvedSourceChannel = `洛雪源: ${lxPluginEngine.lastResolvedSourceName || srcName}`;
+                        log(`[自定义音源] 解析成功，优先使用插件音轨 (${resolvedSourceChannel})`);
                     }
                 } catch (lxErr) {
                     console.warn('[自定义音源] 插件调度异常:', lxErr);
@@ -779,6 +779,113 @@ export function resetPlayerToIdle(state, dom, callbacks = {}) {
     // 保存状态
     if (typeof callbacks.savePlayerState === "function") {
         callbacks.savePlayerState();
+    }
+}
+
+/**
+ * 智能预判并获取下一首曲目对象
+ */
+export function getNextSong(state) {
+    if (!state) return null;
+    if (state.currentList === "favorite") {
+        const favorites = ensureFavoriteSongsArray(state);
+        if (favorites.length === 0) return null;
+        const mode = state.favoritePlayMode || "list";
+        let nextIndex = state.currentFavoriteIndex;
+        if (mode === "random") {
+            nextIndex = Math.floor(Math.random() * favorites.length);
+        } else if (mode === "list") {
+            nextIndex = (state.currentFavoriteIndex + 1) % favorites.length;
+        }
+        return favorites[nextIndex] || null;
+    }
+
+    let playlist = [];
+    if (state.currentPlaylist === "playlist") playlist = state.playlistSongs;
+    else if (state.currentPlaylist === "online") playlist = state.onlineSongs;
+    else if (state.currentPlaylist === "search") playlist = state.searchResults;
+
+    if (!Array.isArray(playlist) || playlist.length === 0) return null;
+    const mode = getActivePlayMode(state);
+    let nextIndex = state.currentIndex;
+    if (mode === "random") {
+        nextIndex = Math.floor(Math.random() * playlist.length);
+    } else if (mode === "list") {
+        nextIndex = (state.currentIndex + 1) % playlist.length;
+    }
+    return playlist[nextIndex] || null;
+}
+
+let isPreloadingNext = false;
+let lastPreloadedSongId = null;
+
+/**
+ * 智能下一首曲目后台静默预载（Zero-Gap 毫秒级秒开切歌）
+ */
+export async function preloadNextSong(state, debugLogger = null) {
+    if (isPreloadingNext) return;
+    const nextSong = getNextSong(state);
+    if (!nextSong || !nextSong.id) return;
+    if (lastPreloadedSongId === String(nextSong.id)) return;
+
+    const quality = state.playbackQuality || '320';
+    const cacheKey = `${nextSong.source || 'netease'}_${nextSong.id}_${quality}`;
+    if (audioUrlMemoryCache.has(cacheKey)) return;
+
+    isPreloadingNext = true;
+    lastPreloadedSongId = String(nextSong.id);
+
+    try {
+        const log = (msg) => {
+            if (typeof debugLogger === "function") debugLogger(msg);
+            else if (typeof window !== "undefined" && typeof window.__solaraDebugLog === "function") window.__solaraDebugLog(msg);
+        };
+        log(`[无缝预载] 正在后台静默预解析下一首曲目: 《${nextSong.name}》...`);
+
+        let preloadUrl = null;
+        let preloadChannel = null;
+
+        // 1. 优先尝试自定义音源
+        if (lxPluginEngine && lxPluginEngine.isEnabled) {
+            try {
+                const customUrl = await lxPluginEngine.resolveAudioUrl(nextSong, quality);
+                if (customUrl) {
+                    preloadUrl = customUrl;
+                    preloadChannel = `洛雪源: ${lxPluginEngine.lastResolvedSourceName || "自定义音源"}`;
+                }
+            } catch {}
+        }
+
+        // 2. 备用尝试原生直连
+        if (!preloadUrl) {
+            const reqUrl = API.getSongUrl(nextSong, quality);
+            const res = await API.fetchJson(reqUrl);
+            if (res && res.url) {
+                preloadUrl = res.url;
+                preloadChannel = "原生直连";
+            }
+        }
+
+        if (preloadUrl) {
+            audioUrlMemoryCache.set(cacheKey, {
+                url: preloadUrl,
+                sourceChannel: preloadChannel,
+                timestamp: Date.now()
+            });
+            log(`[无缝预载] 下一首《${nextSong.name}》已就绪，切歌实现 0 延迟秒播！`);
+
+            // 预请求音频头 128KB 放入浏览器缓存
+            if (typeof document !== "undefined") {
+                const preloader = new Audio();
+                preloader.preload = "auto";
+                preloader.src = preloadUrl;
+                preloader.volume = 0;
+            }
+        }
+    } catch (e) {
+        console.warn("[无缝预载] 后台静默预加载未完成 (不影响正常切歌):", e.message);
+    } finally {
+        isPreloadingNext = false;
     }
 }
 

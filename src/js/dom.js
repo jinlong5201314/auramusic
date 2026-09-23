@@ -109,6 +109,20 @@ export const dom = {
     categoryPickerModal: document.getElementById("categoryPickerModal"),
     logo: document.querySelector(".header h1"),
     brandWrap: document.querySelector(".header-brand-wrap"),
+    immersiveLyricsView: document.getElementById("immersiveLyricsView"),
+    immersiveToggleBtn: document.getElementById("immersiveToggleBtn"),
+    immersiveCoverImg: document.getElementById("immersiveCoverImg"),
+    immersiveSongTitle: document.getElementById("immersiveSongTitle"),
+    immersiveSongArtist: document.getElementById("immersiveSongArtist"),
+    immersiveSourceBadge: document.getElementById("immersiveSourceBadge"),
+    immersiveSourceText: document.getElementById("immersiveSourceText"),
+    immersiveLyricsScroll: document.getElementById("immersiveLyricsScroll"),
+    immersiveLyricsContent: document.getElementById("immersiveLyricsContent"),
+    immersivePrevBtn: document.getElementById("immersivePrevBtn"),
+    immersivePlayBtn: document.getElementById("immersivePlayBtn"),
+    immersiveNextBtn: document.getElementById("immersiveNextBtn"),
+    closeImmersiveBtn: document.getElementById("closeImmersiveBtn"),
+    immersiveF11Btn: document.getElementById("immersiveF11Btn"),
 };
 
 // 确保挂载到 window，保证 mobile.js 及现有外部引用的兼容性

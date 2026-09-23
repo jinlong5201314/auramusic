@@ -44,7 +44,8 @@ import {
     clearLyricsIfLibraryEmpty,
     clearLyricsContent,
     scrollToCurrentLyric,
-    initDesktopLyricsInteractions
+    initDesktopLyricsInteractions,
+    initImmersiveLyrics
 } from "./features/lyrics.js";
 import {
     initSettings,
@@ -120,7 +121,8 @@ import {
     downloadSong,
     formatTime,
     resetPlayerToIdle,
-    cancelPendingPlayback
+    cancelPendingPlayback,
+    preloadNextSong
 } from "./core/audio.js";
 import { initMediaSession } from "./core/media-session.js";
 import { initSquare, closePlaylistDetailModal } from "./features/square.js";
@@ -175,6 +177,13 @@ export async function updateCurrentSongInfo(song, options = {}) {
     dom.currentSongArtist.textContent = Array.isArray(song.artist)
         ? song.artist.join(" / ")
         : (song.artist || "未知艺术家");
+
+    if (dom.immersiveSongTitle) dom.immersiveSongTitle.textContent = song.name || "未知歌曲";
+    if (dom.immersiveSongArtist) {
+        dom.immersiveSongArtist.textContent = Array.isArray(song.artist)
+            ? song.artist.join(" / ")
+            : (song.artist || "未知艺术家");
+    }
 
     if (loadArtwork) {
         try {
@@ -770,12 +779,18 @@ function setupEventHandlers() {
     dom.audioPlayer.addEventListener("ended", () => autoPlayNext(state, dom, getAudioCallbacks()));
     dom.audioPlayer.addEventListener("timeupdate", () => {
         const currentTime = dom.audioPlayer.currentTime || 0;
+        const duration = dom.audioPlayer.duration || 0;
         if (!state.isSeeking) {
             dom.progressBar.value = currentTime;
             dom.currentTimeDisplay.textContent = formatTime(currentTime);
             updateProgressBarBackground(dom, currentTime, Number(dom.progressBar.max));
         }
         syncLyrics(state, dom);
+
+        // 智能无缝切歌预载：当当前曲目播放剩余时间 <= 25 秒或进度超过 85% 时，后台静默预解析下一首
+        if (duration > 35 && (duration - currentTime <= 25 || currentTime / duration >= 0.85)) {
+            preloadNextSong(state, debugLog);
+        }
     });
     dom.audioPlayer.addEventListener("loadedmetadata", () => {
         const duration = dom.audioPlayer.duration || 0;
@@ -1638,6 +1653,10 @@ export async function bootstrap() {
     buildQualityMenu(state, dom);
     applyDynamicGradient(state, dom, { immediate: true });
     initDesktopLyricsInteractions(state, dom);
+    initImmersiveLyrics(state, dom, {
+        playPrevious: () => playPrevious(state, dom, getAudioCallbacks()),
+        playNext: () => playNext(state, dom, getAudioCallbacks()),
+    });
     updateAllTabsIndicators();
     window.addEventListener("resize", () => updateAllTabsIndicators(), { passive: true });
 

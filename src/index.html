@@ -15,8 +15,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=3.1.0">
-    <script src="js/i18n.js?v=3.1.0"></script>
+    <link rel="stylesheet" href="css/style.css?v=3.2.0">
+    <script src="js/i18n.js?v=3.2.0"></script>
     <script>
         (function () {
             const ua = navigator.userAgent || "";
@@ -36,7 +36,7 @@
             document.documentElement.classList.add("mobile-view");
             const link = document.createElement("link");
             link.rel = "stylesheet";
-            link.href = "css/mobile.css?v=3.1.0";
+            link.href = "css/mobile.css?v=3.2.0";
             link.id = "mobileStylesheet";
             document.head.appendChild(link);
             let stableViewportHeight = window.innerHeight;
@@ -651,6 +651,9 @@
                 <button class="transport-button transport-button--shuffle" id="shuffleToggleBtn" type="button" title="随机播放" aria-label="切换随机播放">
                     <svg class="apple-svg-icon shuffle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.6-8.6c.8-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.4c1.3 0 2.5.6 3.3 1.7l1.8 2.3"/><path d="M14.9 14.7l1.8 2.3c.8 1.1 2 1.7 3.3 1.7H22"/><path d="m18 22 4-4-4-4"/></svg>
                 </button>
+                <button class="transport-button transport-button--immersive" id="immersiveToggleBtn" type="button" title="进入全屏沉浸歌词 (快捷键 L / 点击封面)" aria-label="全屏沉浸式流体歌词">
+                    <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 8h10"/><path d="M7 12h10"/><path d="M7 16h6"/></svg>
+                </button>
             </div>
             <div class="progress-container">
                 <span id="currentTimeDisplay">00:00</span>
@@ -794,6 +797,63 @@
 <!-- 通知容器 -->
 <div id="notification" class="notification"></div>
 
+<!-- 沉浸式全屏流体大字歌词页 (Apple Music 风格) -->
+<div class="immersive-lyrics-view" id="immersiveLyricsView" aria-hidden="true">
+    <!-- 动态流体极光背景 -->
+    <div class="immersive-aurora-bg" id="immersiveAuroraBg">
+        <div class="aurora-blob aurora-blob-1"></div>
+        <div class="aurora-blob aurora-blob-2"></div>
+        <div class="aurora-blob aurora-blob-3"></div>
+    </div>
+    <div class="immersive-glass-overlay"></div>
+
+    <!-- 顶栏控件：音质胶囊徽章与全屏/关闭按钮 -->
+    <div class="immersive-header">
+        <div class="immersive-badge" id="immersiveSourceBadge">
+            <span class="pulse-dot"></span>
+            <span id="immersiveSourceText">极速纯净流</span>
+        </div>
+        <div class="immersive-actions">
+            <button class="immersive-btn" id="immersiveF11Btn" title="切换浏览器全屏 (F11)">
+                <i class="fa-solid fa-expand"></i>
+            </button>
+            <button class="immersive-btn close-btn" id="closeImmersiveBtn" title="退出沉浸歌词 (ESC)">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 主体视窗：左侧唱片封面 + 歌曲信息，右侧大字流体歌词流 -->
+    <div class="immersive-body">
+        <div class="immersive-album-section">
+            <div class="immersive-cover-wrapper" id="immersiveCoverWrapper">
+                <img id="immersiveCoverImg" src="assets/images/default-cover.png" alt="专辑封面" class="immersive-cover-img">
+            </div>
+            <div class="immersive-meta">
+                <h2 class="immersive-song-title" id="immersiveSongTitle">选择一首歌曲开始播放</h2>
+                <p class="immersive-song-artist" id="immersiveSongArtist">Solara Music</p>
+            </div>
+            <div class="immersive-mini-controls">
+                <button class="immersive-ctrl-btn" id="immersivePrevBtn" title="上一曲">
+                    <i class="fa-solid fa-backward-step"></i>
+                </button>
+                <button class="immersive-ctrl-btn play-btn" id="immersivePlayBtn" title="播放 / 暂停">
+                    <i class="fa-solid fa-play"></i>
+                </button>
+                <button class="immersive-ctrl-btn" id="immersiveNextBtn" title="下一曲">
+                    <i class="fa-solid fa-forward-step"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="immersive-lyrics-section" id="immersiveLyricsScroll">
+            <div class="immersive-lyrics-content" id="immersiveLyricsContent">
+                <div class="lyrics-placeholder">沉浸式歌词已就绪，播放即可同步显示</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 调试信息容器 -->
 <div id="debugInfo" class="debug-info">
     <div class="debug-info-header" id="debugInfoHeader" title="按住拖拽移动，双击折叠/展开">
@@ -808,12 +868,12 @@
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script type="module" src="js/app.js?v=3.1.0"></script>
+<script type="module" src="js/app.js?v=3.2.0"></script>
     <script>
         if (window.__SOLARA_IS_MOBILE__) {
             const mobileScript = document.createElement('script');
             mobileScript.type = 'module';
-            mobileScript.src = 'js/mobile.js?v=3.1.0';
+            mobileScript.src = 'js/mobile.js?v=3.2.0';
         document.body.appendChild(mobileScript);
     }
 </script>

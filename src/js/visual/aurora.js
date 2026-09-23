@@ -219,6 +219,9 @@ export function applyDynamicGradient(state, dom, options = {}) {
         setGlobalThemeProperty("--palette-c4", targetColors[3]);
         setGlobalThemeProperty("--palette-accent", targetColors[4]);
         setGlobalThemeProperty("--palette-glow", `${targetColors[4]}66`);
+        setGlobalThemeProperty("--aurora-color-1", targetColors[0]);
+        setGlobalThemeProperty("--aurora-color-2", targetColors[1]);
+        setGlobalThemeProperty("--aurora-color-3", targetColors[2]);
         applyThemeTokens(targetTokens);
     };
 
@@ -496,6 +499,9 @@ export function setAlbumCoverImage(url, dom, state) {
     state.currentArtworkUrl = safeUrl;
     dom.albumCover.innerHTML = `<img src="${safeUrl}" alt="专辑封面">`;
     dom.albumCover.classList.remove("loading");
+    if (dom.immersiveCoverImg) {
+        dom.immersiveCoverImg.src = safeUrl;
+    }
     if (typeof window.__SOLARA_UPDATE_MEDIA_METADATA === 'function') {
         window.__SOLARA_UPDATE_MEDIA_METADATA();
     }

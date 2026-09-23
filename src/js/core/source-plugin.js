@@ -399,13 +399,6 @@ class LxMusicPluginEngine {
             }
         }
 
-        const activeSrc = this.getActiveSource();
-        console.log(`[LX Sandbox] 正在尝试通过音源【${activeSrc?.name || "自定义音源"}】解析: ${song.name} (${lxSource} / ${lxQuality})`);
-
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error("自定义音源响应超时 (3.5s)")), 3500);
-        });
-
         // 验证 URL 是否返回有效音频（过滤返回报错 JSON 如 201 error 或非音频网页）
         const isAudioUrlValid = async (url) => {
             if (!url || typeof url !== "string" || !url.startsWith("http")) return false;
@@ -422,50 +415,86 @@ class LxMusicPluginEngine {
             return true;
         };
 
-        try {
-            const execPromise = this.registeredHandler({
-                action: "musicUrl",
-                source: lxSource,
-                info: {
-                    type: lxQuality,
-                    musicInfo
-                }
-            });
-
-            const resultUrl = await Promise.race([execPromise, timeoutPromise]);
-            if (await isAudioUrlValid(resultUrl)) {
-                console.log(`[LX Sandbox] 自定义音源解析成功: ${resultUrl.slice(0, 60)}...`);
-                return resultUrl;
-            }
-
-            // 若当前来源解析未出有效音频流，尝试在网易云平台跨源解析（通常有完整高品质音轨）
-            if (lxSource !== "wy" && song.name) {
-                console.log(`[LX Sandbox] 当前源【${lxSource}】未出有效音频，尝试同名跨源至【wy】...`);
-                try {
-                    const crossPromise = this.registeredHandler({
-                        action: "musicUrl",
-                        source: "wy",
-                        info: {
-                            type: lxQuality,
-                            musicInfo: {
-                                ...musicInfo,
-                                id: String(song.lyric_id || song.id || ""),
-                            }
-                        }
-                    });
-                    const crossUrl = await Promise.race([crossPromise, new Promise((_, reject) => setTimeout(() => reject(new Error("跨源超时")), 2500))]);
-                    if (await isAudioUrlValid(crossUrl)) {
-                        console.log(`[LX Sandbox] 跨源至【wy】解析成功: ${crossUrl.slice(0, 60)}...`);
-                        return crossUrl;
-                    }
-                } catch {}
-            }
-
-            return null;
-        } catch (err) {
-            console.warn(`[LX Sandbox] 音源解析未命中或异常 (${err.message})，平滑降级至 Solara 原生直连`);
-            return null;
+        // 构造候选音源列表：当前激活源优先，其余已添加源作为自动容灾备用源
+        const candidateSources = [];
+        const activeSrc = this.getActiveSource();
+        if (activeSrc) candidateSources.push(activeSrc);
+        for (const s of this.sources) {
+            if (activeSrc && s.id === activeSrc.id) continue;
+            candidateSources.push(s);
         }
+
+        const originalActiveId = this.activeSourceId;
+        this.lastResolvedSourceName = null;
+
+        for (let i = 0; i < candidateSources.length; i++) {
+            const currentSrc = candidateSources[i];
+            const isFallbackSrc = i > 0;
+            const srcDisplayName = isFallbackSrc ? `${currentSrc.name || "备用源"}(自动容灾)` : (currentSrc.name || "自定义音源");
+
+            try {
+                if (isFallbackSrc) {
+                    console.log(`[LX Failover] 主源未命中，自动切换备用音源【${currentSrc.name}】进行容灾解析...`);
+                    const switched = await this.activateSource(currentSrc.id);
+                    if (!switched) continue;
+                }
+
+                console.log(`[LX Sandbox] 正在尝试通过音源【${currentSrc.name}】解析: ${song.name} (${lxSource} / ${lxQuality})`);
+
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error("音源响应超时 (2.8s)")), 2800);
+                });
+
+                const execPromise = this.registeredHandler({
+                    action: "musicUrl",
+                    source: lxSource,
+                    info: {
+                        type: lxQuality,
+                        musicInfo
+                    }
+                });
+
+                const resultUrl = await Promise.race([execPromise, timeoutPromise]);
+                if (await isAudioUrlValid(resultUrl)) {
+                    console.log(`[LX Sandbox] 音源【${currentSrc.name}】解析成功: ${resultUrl.slice(0, 60)}...`);
+                    this.lastResolvedSourceName = srcDisplayName;
+                    // 恢复原本选中的默认源状态标识
+                    if (isFallbackSrc && originalActiveId) this.activeSourceId = originalActiveId;
+                    return resultUrl;
+                }
+
+                // 若当前来源解析未出有效音频流，尝试在网易云平台跨源解析（通常有完整高品质音轨）
+                if (lxSource !== "wy" && song.name) {
+                    console.log(`[LX Sandbox] 音源【${currentSrc.name}】在【${lxSource}】未出链，尝试同名跨源至【wy】...`);
+                    try {
+                        const crossPromise = this.registeredHandler({
+                            action: "musicUrl",
+                            source: "wy",
+                            info: {
+                                type: lxQuality,
+                                musicInfo: {
+                                    ...musicInfo,
+                                    id: String(song.lyric_id || song.id || ""),
+                                }
+                            }
+                        });
+                        const crossUrl = await Promise.race([crossPromise, new Promise((_, reject) => setTimeout(() => reject(new Error("跨源超时")), 2500))]);
+                        if (await isAudioUrlValid(crossUrl)) {
+                            console.log(`[LX Sandbox] 音源【${currentSrc.name}】跨源至【wy】解析成功: ${crossUrl.slice(0, 60)}...`);
+                            this.lastResolvedSourceName = srcDisplayName;
+                            if (isFallbackSrc && originalActiveId) this.activeSourceId = originalActiveId;
+                            return crossUrl;
+                        }
+                    } catch {}
+                }
+            } catch (err) {
+                console.warn(`[LX Sandbox] 音源【${currentSrc.name}】调度异常:`, err.message);
+            }
+        }
+
+        // 所有订阅源均未命中，重置回初始激活源
+        if (originalActiveId) this.activateSource(originalActiveId).catch(() => {});
+        return null;
     }
 }
 
