@@ -102,6 +102,55 @@ async function proxyKuwoAudio(targetUrl, req, res) {
   }
 }
 
+// Kugou 官方移动端歌词直连解析
+async function fetchKugouLyric(id, name, artist) {
+  try {
+    let hash = '';
+    if (typeof id === 'string' && /^[a-fA-F0-9]{32}$/.test(id)) {
+      hash = id;
+    } else if (name) {
+      const cleanName = name.replace(/\([^)]*\)|（[^）]*）/g, '').trim();
+      const kw = `${cleanName} ${artist}`.trim();
+      const searchUrl = `http://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=${encodeURIComponent(kw)}&page=1&pagesize=3&showtype=1`;
+      const searchResp = await fetch(searchUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)' },
+      });
+      if (searchResp.ok) {
+        const sData = await searchResp.json();
+        const infoList = sData?.data?.info || [];
+        let matched = infoList.find((item) => String(item.audio_id) === String(id));
+        if (!matched && infoList.length > 0) matched = infoList[0];
+        if (matched) {
+          hash = matched.sqhash || matched['320hash'] || matched.hash || '';
+        }
+      }
+    }
+
+    if (!hash) return null;
+
+    const lrcSearchUrl = `http://krcs.kugou.com/search?ver=1&man=yes&client=mobi&keyword=&duration=0&hash=${hash}`;
+    const lrcSearchResp = await fetch(lrcSearchUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!lrcSearchResp.ok) return null;
+    const lrcSearchData = await lrcSearchResp.json();
+    const candidate = lrcSearchData?.candidates?.[0];
+    if (!candidate?.id || !candidate?.accesskey) return null;
+
+    const downloadUrl = `http://krcs.kugou.com/download?ver=1&client=mobi&id=${candidate.id}&accesskey=${candidate.accesskey}&fmt=lrc&charset=utf8`;
+    const downloadResp = await fetch(downloadUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!downloadResp.ok) return null;
+    const downloadData = await downloadResp.json();
+    if (downloadData?.content) {
+      const decoded = Buffer.from(downloadData.content, 'base64').toString('utf-8');
+      if (decoded && decoded.includes('[')) {
+        return decoded;
+      }
+    }
+  } catch (err) {
+    console.warn('[Kugou Lyric Node] Error:', err);
+  }
+  return null;
+}
+
 /** 代理 music API 请求，带本地缓存 */
 async function fetchUnifiedLyric(source, id, name, artist) {
   // 1. QQ 音乐官方接口
@@ -121,8 +170,14 @@ async function fetchUnifiedLyric(source, id, name, artist) {
     }
   }
 
-  // 2. 网易云官方接口 (若 ID 为数字)
-  if (source === 'netease' || source === 'wy' || (typeof id === 'string' && /^\d+$/.test(id))) {
+  // 2. 酷狗音乐官方移动端接口
+  if (source === 'kugou' || source === 'kg' || (typeof id === 'string' && /^[a-fA-F0-9]{32}$/.test(id))) {
+    const kgLyric = await fetchKugouLyric(id, name, artist);
+    if (kgLyric) return kgLyric;
+  }
+
+  // 3. 网易云官方接口 (若 ID 为数字)
+  if (source === 'netease' || source === 'wy') {
     try {
       const url = `https://music.163.com/api/song/lyric?id=${id}&lv=1&kv=1&tv=-1`;
       const resp = await fetch(url, { headers: { Referer: 'https://music.163.com', 'User-Agent': 'Mozilla/5.0' } });
@@ -165,53 +220,38 @@ async function fetchUnifiedLyric(source, id, name, artist) {
     try {
       const cleanName = name.replace(/\([^)]*\)|（[^）]*）/g, '').trim();
       const queries = [
-        `${name} ${artist}`.trim(),
         `${cleanName} ${artist}`.trim(),
-        name.trim(),
         cleanName,
       ];
 
       for (const q of queries) {
         if (!q) continue;
-        // 4.1 尝试网易云搜索反查
-        const sUrl = `https://music.163.com/api/search/get/web?s=${encodeURIComponent(q)}&type=1&offset=0&total=true&limit=3`;
-        const sResp = await fetch(sUrl, { headers: { Referer: 'https://music.163.com', 'User-Agent': 'Mozilla/5.0' } });
-        if (sResp.ok) {
-          const sData = await sResp.json();
-          const songs = sData?.result?.songs || [];
-          for (const song of songs) {
-            if (song.id) {
-              const lUrl = `https://music.163.com/api/song/lyric?id=${song.id}&lv=1&kv=1&tv=-1`;
-              const lResp = await fetch(lUrl, { headers: { Referer: 'https://music.163.com', 'User-Agent': 'Mozilla/5.0' } });
-              if (lResp.ok) {
-                const lData = await lResp.json();
-                const lrc = lData?.lrc?.lyric || '';
-                if (lrc && lrc.includes('[')) return lrc;
-              }
-            }
-          }
-        }
-
-        // 4.2 尝试 QQ 音乐官方搜索反查歌词（极速且带精准逐句歌词）
-        const qqSearchUrl = `https://c.y.qq.com/soso/fcgi-bin/client_search_cp?p=1&n=3&w=${encodeURIComponent(q)}&format=json`;
-        const qqSearchResp = await fetch(qqSearchUrl, { headers: { Referer: 'https://y.qq.com/', 'User-Agent': 'Mozilla/5.0' } });
-        if (qqSearchResp.ok) {
-          const qqData = await qqSearchResp.json();
-          const qqSongs = qqData?.data?.song?.list || [];
-          for (const qs of qqSongs) {
-            if (qs.songmid) {
-              const qqLrcUrl = `https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg?songmid=${qs.songmid}&format=json&nobase64=0`;
-              const qqLrcResp = await fetch(qqLrcUrl, { headers: { Referer: 'https://y.qq.com/', 'User-Agent': 'Mozilla/5.0' } });
-              if (qqLrcResp.ok) {
-                const lrcData = await qqLrcResp.json();
-                if (lrcData?.lyric) {
-                  const decoded = Buffer.from(lrcData.lyric, 'base64').toString('utf-8');
-                  if (decoded && decoded.includes('[')) return decoded;
+        // 5.1 尝试 GD Studio 网易云聚合反查
+        try {
+          const gdSearchUrl = `${DEFAULT_API_BASE_URL}?types=search&source=netease&name=${encodeURIComponent(q)}&count=3`;
+          const gdSearchResp = await fetch(gdSearchUrl, { headers: { 'User-Agent': 'Meting/1.5.0' } });
+          if (gdSearchResp.ok) {
+            const gdSongs = await gdSearchResp.json();
+            if (Array.isArray(gdSongs)) {
+              for (const gds of gdSongs) {
+                const lyricTargetId = gds.lyric_id || gds.id;
+                if (lyricTargetId) {
+                  const lUrl = `${DEFAULT_API_BASE_URL}?types=lyric&source=netease&id=${lyricTargetId}`;
+                  const lResp = await fetch(lUrl, { headers: { 'User-Agent': 'Meting/1.5.0' } });
+                  if (lResp.ok) {
+                    const lData = await lResp.json();
+                    const lrc = lData?.lyric || '';
+                    if (lrc && lrc.includes('[')) return lrc;
+                  }
                 }
               }
             }
           }
-        }
+        } catch {}
+
+        // 5.2 尝试酷狗歌词反查
+        const kgFallback = await fetchKugouLyric('', q, '');
+        if (kgFallback) return kgFallback;
       }
     } catch (err) {
       console.warn('[Fallback Lyric Node] Error:', err);
@@ -344,6 +384,14 @@ async function proxyApiRequest(reqUrl, req, res) {
       }
     } catch (lrcErr) {
       console.warn('[Unified Lyric Node] Error:', lrcErr);
+    }
+
+    const unsupportedGdSources = ['kugou', 'kg', 'kuwo', 'kw', 'migu', 'mg', 'tencent', 'tx'];
+    if (unsupportedGdSources.includes(source)) {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.json({ lyric: '' });
     }
   }
 
