@@ -206,7 +206,13 @@ export async function loadLyrics(song, state, dom, debugLogger = null) {
     };
 
     if (!song) return;
-    const cacheKey = `${song.source || 'netease'}_${song.lyric_id || song.id}`;
+    // 关键修正：对于小秋音乐(tx)，如果 lyric_id 是全数字脏数据，前端内存缓存 key 也纠正为真实 ID
+    let safeLyricId = song.lyric_id || song.id;
+    if ((song.source === "tx" || song.source === "tencent") && typeof safeLyricId === "string" && /^\d+$/.test(safeLyricId) && typeof song.id === "string" && song.id.startsWith("00")) {
+        safeLyricId = song.id;
+        song.lyric_id = song.id;
+    }
+    const cacheKey = `${song.source || 'netease'}_${safeLyricId}_v3.2.5`;
 
     // 1. 优先命中前端内存缓存（0 网络请求）
     if (lyricsMemoryCache.has(cacheKey)) {

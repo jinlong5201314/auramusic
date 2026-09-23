@@ -477,10 +477,12 @@ async function fetchKuwoDirectUrl(query: string): Promise<string | null> {
 async function proxyApiRequest(url: URL, request: Request, waitUntil?: (promise: Promise<any>) => void, apiBaseUrl: string = DEFAULT_API_BASE_URL): Promise<Response> {
   const cache = caches.default;
 
-  // 构建缓存 Key（过滤掉随机签名 s 以及强制刷新标记 nocache）
+  // 构建缓存 Key（过滤掉随机签名 s 以及强制刷新标记 nocache，加入全局缓存版本号杜绝历史污染缓存）
+  const CACHE_VERSION = "v3.2.5";
   const cacheUrl = new URL(url.toString());
   cacheUrl.searchParams.delete("s");
   cacheUrl.searchParams.delete("nocache");
+  cacheUrl.searchParams.set("_v", CACHE_VERSION);
 
   const cacheKey = new Request(cacheUrl.toString(), {
     method: request.method,

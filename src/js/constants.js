@@ -284,7 +284,12 @@ export const API = {
         const normSource = sourceMap[rawSource] || rawSource;
         const songName = encodeURIComponent(song.name || "");
         const artistName = encodeURIComponent(Array.isArray(song.artist) ? song.artist.join(" ") : (song.artist || ""));
-        return `${API.baseUrl}?types=lyric&id=${song.lyric_id || song.id}&source=${normSource}&name=${songName}&artist=${artistName}&s=${signature}`;
+        // 关键防御：对于小秋音乐(tx)，如果 lyric_id 被历史脏数据污染成了网易云数字 ID，强制纠正回 song.id (如 000hh1Mg2uZKBd)
+        let lyricId = song.lyric_id || song.id;
+        if ((normSource === "tencent" || normSource === "tx") && typeof lyricId === "string" && /^\d+$/.test(lyricId) && typeof song.id === "string" && song.id.startsWith("00")) {
+            lyricId = song.id;
+        }
+        return `${API.baseUrl}?types=lyric&id=${lyricId}&source=${normSource}&name=${songName}&artist=${artistName}&_v=v3.2.5&s=${signature}`;
     },
 
     getPicUrl: (song) => {
