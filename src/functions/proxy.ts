@@ -154,29 +154,63 @@ async function fetchUnifiedLyric(source: string, id: string, name: string, artis
     }
   }
 
-  // 4. 若有歌名，通过网易云搜索反查歌词
-  if (name) {
-    try {
-      const q = `${name} ${artist}`.trim();
-      const sUrl = `https://music.163.com/api/search/get/web?s=${encodeURIComponent(q)}&type=1&offset=0&total=true&limit=1`;
-      const sResp = await fetch(sUrl, { headers: { Referer: "https://music.163.com", "User-Agent": "Mozilla/5.0" } });
-      if (sResp.ok) {
-        const sData: any = await sResp.json();
-        const matchId = sData?.result?.songs?.[0]?.id;
-        if (matchId) {
-          const lUrl = `https://music.163.com/api/song/lyric?id=${matchId}&lv=1&kv=1&tv=-1`;
-          const lResp = await fetch(lUrl, { headers: { Referer: "https://music.163.com", "User-Agent": "Mozilla/5.0" } });
-          if (lResp.ok) {
-            const lData: any = await lResp.json();
-            const lrc = lData?.lrc?.lyric || "";
-            if (lrc) return lrc;
+      // 4. 若有歌名，通过网易云搜索反查歌词
+      if (name) {
+        try {
+          const cleanName = name.replace(/\([^)]*\)|（[^）]*）/g, "").trim();
+          const queries = [
+            `${name} ${artist}`.trim(),
+            `${cleanName} ${artist}`.trim(),
+            name.trim(),
+            cleanName,
+          ];
+
+          for (const q of queries) {
+            if (!q) continue;
+            // 4.1 尝试网易云搜索反查
+            const sUrl = `https://music.163.com/api/search/get/web?s=${encodeURIComponent(q)}&type=1&offset=0&total=true&limit=3`;
+            const sResp = await fetch(sUrl, { headers: { Referer: "https://music.163.com", "User-Agent": "Mozilla/5.0" } });
+            if (sResp.ok) {
+              const sData: any = await sResp.json();
+              const songs = sData?.result?.songs || [];
+              for (const song of songs) {
+                if (song.id) {
+                  const lUrl = `https://music.163.com/api/song/lyric?id=${song.id}&lv=1&kv=1&tv=-1`;
+                  const lResp = await fetch(lUrl, { headers: { Referer: "https://music.163.com", "User-Agent": "Mozilla/5.0" } });
+                  if (lResp.ok) {
+                    const lData: any = await lResp.json();
+                    const lrc = lData?.lrc?.lyric || "";
+                    if (lrc && lrc.includes("[")) return lrc;
+                  }
+                }
+              }
+            }
+
+            // 4.2 尝试 QQ 音乐官方搜索反查歌词（极速且带精准逐句歌词）
+            const qqSearchUrl = `https://c.y.qq.com/soso/fcgi-bin/client_search_cp?p=1&n=3&w=${encodeURIComponent(q)}&format=json`;
+            const qqSearchResp = await fetch(qqSearchUrl, { headers: { Referer: "https://y.qq.com/", "User-Agent": "Mozilla/5.0" } });
+            if (qqSearchResp.ok) {
+              const qqData: any = await qqSearchResp.json();
+              const qqSongs = qqData?.data?.song?.list || [];
+              for (const qs of qqSongs) {
+                if (qs.songmid) {
+                  const qqLrcUrl = `https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg?songmid=${qs.songmid}&format=json&nobase64=0`;
+                  const qqLrcResp = await fetch(qqLrcUrl, { headers: { Referer: "https://y.qq.com/", "User-Agent": "Mozilla/5.0" } });
+                  if (qqLrcResp.ok) {
+                    const lrcData: any = await qqLrcResp.json();
+                    if (lrcData?.lyric) {
+                      const decoded = decodeBase64Utf8(lrcData.lyric);
+                      if (decoded && decoded.includes("[")) return decoded;
+                    }
+                  }
+                }
+              }
+            }
           }
+        } catch (err) {
+          console.warn("[Fallback Lyric] Error:", err);
         }
       }
-    } catch (err) {
-      console.warn("[Fallback Lyric] Error:", err);
-    }
-  }
 
   return null;
 }
