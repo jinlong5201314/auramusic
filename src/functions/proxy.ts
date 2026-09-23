@@ -291,8 +291,8 @@ async function fetchUnifiedLyric(source: string, id: string, name: string, artis
   return null;
 }
 
-/** 严格检测音频直链有效性：过滤掉平台下发的短小版权声明语音（通常 < 300KB） */
-async function checkAudioUrlValid(audioUrl: string): Promise<boolean> {
+/** 严格检测音频直链有效性：过滤版权提示语音、报错JSON以及VIP试听片段（通常 < 1.8MB） */
+async function checkAudioUrlValid(audioUrl: string, minSizeBytes: number = 1.8 * 1024 * 1024): Promise<boolean> {
   if (!audioUrl || !audioUrl.startsWith("http")) return false;
   try {
     const resp = await fetch(audioUrl, {
@@ -300,11 +300,15 @@ async function checkAudioUrlValid(audioUrl: string): Promise<boolean> {
       headers: { "User-Agent": "Mozilla/5.0" },
     });
     if (!resp.ok) return false;
+    const ct = (resp.headers.get("Content-Type") || "").toLowerCase();
+    if (ct.includes("json") || ct.includes("html") || ct.includes("text")) {
+      console.warn(`[Audio Validator] 拦截到非音频响应类型 (${ct}): ${audioUrl}`);
+      return false;
+    }
     const cl = parseInt(resp.headers.get("Content-Length") || "0", 10);
-    // 酷我/腾讯等平台的版权提示音频通常为 80KB ~ 181KB
-    // 完整歌曲即使 128k 2分钟也在 1.8MB 以上，设定 400KB 拦截阈值
-    if (cl > 0 && cl < 400 * 1024) {
-      console.warn(`[Audio Validator] 拦截到版权提示语音: ${audioUrl} (文件大小: ${cl} 字节 < 400KB)`);
+    // 拦截版权提示语音（<300KB）以及 VIP 27~30秒试听音频切片（通常为 1.05MB 左右）
+    if (cl > 0 && cl < minSizeBytes) {
+      console.warn(`[Audio Validator] 拦截到残缺试听片段/版权提示语音: ${audioUrl} (大小: ${(cl/1024).toFixed(1)} KB < ${(minSizeBytes/1024).toFixed(1)} KB)`);
       return false;
     }
     return true;
@@ -314,27 +318,36 @@ async function checkAudioUrlValid(audioUrl: string): Promise<boolean> {
   }
 }
 
-/** 跨平台寻找可正常播放的完整音轨 */
+/** 跨平台寻找可正常播放的完整音轨（严禁下发 <2.2MB 的 VIP 试听音频） */
 async function findPlayableNeteaseTrack(name: string, artist: string, apiBaseUrl: string): Promise<{ url: string; br: number } | null> {
   if (!name) return null;
   try {
-    const q = `${name} ${artist}`.trim();
-    const sUrl = `${apiBaseUrl}?types=search&source=netease&name=${encodeURIComponent(q)}&count=8`;
-    const sResp = await fetch(sUrl, { headers: { "User-Agent": "Meting/1.5.0" } });
-    if (!sResp.ok) return null;
-    const songs: any = await sResp.json();
-    if (!Array.isArray(songs) || songs.length === 0) return null;
+    const cleanName = name.replace(/\([^)]*\)|（[^）]*）/g, "").trim();
+    const queries = [
+      `${cleanName} ${artist}`.trim(),
+      cleanName,
+    ];
 
-    for (const song of songs) {
-      const sid = song.id;
-      if (!sid) continue;
-      const pUrl = `${apiBaseUrl}?types=url&source=netease&id=${sid}&br=320`;
-      const pResp = await fetch(pUrl, { headers: { "User-Agent": "Meting/1.5.0" } });
-      if (!pResp.ok) continue;
-      const pData: any = await pResp.json();
-      const realUrl = pData?.url;
-      if (realUrl && (await checkAudioUrlValid(realUrl))) {
-        return { url: realUrl, br: 320 };
+    for (const q of queries) {
+      if (!q) continue;
+      const sUrl = `${apiBaseUrl}?types=search&source=netease&name=${encodeURIComponent(q)}&count=10`;
+      const sResp = await fetch(sUrl, { headers: { "User-Agent": "Meting/1.5.0" } });
+      if (!sResp.ok) continue;
+      const songs: any = await sResp.json();
+      if (!Array.isArray(songs) || songs.length === 0) continue;
+
+      for (const song of songs) {
+        const sid = song.id;
+        if (!sid) continue;
+        const pUrl = `${apiBaseUrl}?types=url&source=netease&id=${sid}&br=320`;
+        const pResp = await fetch(pUrl, { headers: { "User-Agent": "Meting/1.5.0" } });
+        if (!pResp.ok) continue;
+        const pData: any = await pResp.json();
+        const realUrl = pData?.url;
+        // 门槛设为 2.2MB，彻底杜绝 1.06MB 的 27 秒试听音频
+        if (realUrl && (await checkAudioUrlValid(realUrl, 2.2 * 1024 * 1024))) {
+          return { url: realUrl, br: 320 };
+        }
       }
     }
   } catch (err) {

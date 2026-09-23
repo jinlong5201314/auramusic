@@ -439,6 +439,12 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
 
             try {
                 await waitForAudioReady(dom.audioPlayer);
+                // 严格拦截：识别并过滤 20~45 秒的 VIP 试听音频切片（如网易云/腾讯 27s 试听音频）
+                const dur = dom.audioPlayer.duration;
+                if (dur > 0 && dur < 45) {
+                    log(`[试听拦截] 检测到音频时长仅有 ${Math.round(dur)} 秒（平台 VIP 试听切片），拒绝播放残缺音频！`);
+                    throw new Error(`检测到该音频为平台试听片段 (${Math.round(dur)}s)，已自动放弃并调度完整源`);
+                }
                 selectedAudioUrl = candidateUrl;
                 break;
             } catch (error) {

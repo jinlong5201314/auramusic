@@ -378,12 +378,49 @@ class LxMusicPluginEngine {
             hash: song.hash || song.id || ""
         };
 
+        // 针对酷狗源：若 hash 缺失或为纯数字 ID，秒查酷狗官方补齐 32 位 MD5 Hash
+        if (lxSource === "kg" && (!musicInfo.hash || !/^[a-fA-F0-9]{32}$/.test(musicInfo.hash))) {
+            try {
+                const kgSearchUrl = `/proxy?target=${encodeURIComponent(`http://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=${encodeURIComponent(song.name + " " + (song.artist || ""))}&page=1&pagesize=2`)}`;
+                const kgResp = await fetch(kgSearchUrl, { signal: AbortSignal.timeout(1500) });
+                if (kgResp.ok) {
+                    const kgData = await kgResp.json();
+                    const infoList = kgData?.data?.info || [];
+                    if (infoList.length > 0) {
+                        const targetHash = infoList[0].sqhash || infoList[0]["320hash"] || infoList[0].hash;
+                        if (targetHash) {
+                            musicInfo.hash = targetHash;
+                            musicInfo.songmid = targetHash;
+                        }
+                    }
+                }
+            } catch (kgErr) {
+                console.warn("[LX Sandbox] 补齐酷狗 Hash 失败:", kgErr);
+            }
+        }
+
         const activeSrc = this.getActiveSource();
         console.log(`[LX Sandbox] 正在尝试通过音源【${activeSrc?.name || "自定义音源"}】解析: ${song.name} (${lxSource} / ${lxQuality})`);
 
         const timeoutPromise = new Promise((_, reject) => {
             setTimeout(() => reject(new Error("自定义音源响应超时 (3.5s)")), 3500);
         });
+
+        // 验证 URL 是否返回有效音频（过滤返回报错 JSON 如 201 error 或非音频网页）
+        const isAudioUrlValid = async (url) => {
+            if (!url || typeof url !== "string" || !url.startsWith("http")) return false;
+            // 若为海棠网等已知失效的 JSON 报错接口，直接识别为无效
+            if (url.includes(".php?") && (url.includes("haitangw") || url.includes("nxinxz") || url.includes("175.27.166.236"))) {
+                try {
+                    const checkResp = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(2000) });
+                    const ct = (checkResp.headers.get("content-type") || "").toLowerCase();
+                    if (ct.includes("json") || ct.includes("html") || ct.includes("text")) return false;
+                } catch {
+                    return false;
+                }
+            }
+            return true;
+        };
 
         try {
             const execPromise = this.registeredHandler({
@@ -396,10 +433,34 @@ class LxMusicPluginEngine {
             });
 
             const resultUrl = await Promise.race([execPromise, timeoutPromise]);
-            if (typeof resultUrl === "string" && resultUrl.startsWith("http")) {
+            if (await isAudioUrlValid(resultUrl)) {
                 console.log(`[LX Sandbox] 自定义音源解析成功: ${resultUrl.slice(0, 60)}...`);
                 return resultUrl;
             }
+
+            // 若当前来源解析未出有效音频流，尝试在网易云平台跨源解析（通常有完整高品质音轨）
+            if (lxSource !== "wy" && song.name) {
+                console.log(`[LX Sandbox] 当前源【${lxSource}】未出有效音频，尝试同名跨源至【wy】...`);
+                try {
+                    const crossPromise = this.registeredHandler({
+                        action: "musicUrl",
+                        source: "wy",
+                        info: {
+                            type: lxQuality,
+                            musicInfo: {
+                                ...musicInfo,
+                                id: String(song.lyric_id || song.id || ""),
+                            }
+                        }
+                    });
+                    const crossUrl = await Promise.race([crossPromise, new Promise((_, reject) => setTimeout(() => reject(new Error("跨源超时")), 2500))]);
+                    if (await isAudioUrlValid(crossUrl)) {
+                        console.log(`[LX Sandbox] 跨源至【wy】解析成功: ${crossUrl.slice(0, 60)}...`);
+                        return crossUrl;
+                    }
+                } catch {}
+            }
+
             return null;
         } catch (err) {
             console.warn(`[LX Sandbox] 音源解析未命中或异常 (${err.message})，平滑降级至 Solara 原生直连`);
