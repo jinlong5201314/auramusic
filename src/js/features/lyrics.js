@@ -306,7 +306,7 @@ export function initImmersiveLyrics(state, dom, callbacks = {}) {
             if (dom.immersiveSongTitle) dom.immersiveSongTitle.textContent = song.name || "选择一首歌曲开始播放";
             if (dom.immersiveSongArtist) dom.immersiveSongArtist.textContent = song.artist || "Solara Music";
             if (dom.immersiveCoverImg) {
-                dom.immersiveCoverImg.src = song.pic || "assets/images/default-cover.png";
+                dom.immersiveCoverImg.src = song.pic || "favicon.png";
             }
         }
         if (dom.immersiveSourceText && dom.resolveText) {
