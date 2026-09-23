@@ -222,6 +222,28 @@ export async function initSquare(state, dom, callbacks = {}) {
     });
   }
 
+  // 10. 歌单分页上一页/下一页绑定
+  const pagePrevBtn = document.getElementById("squarePrevPageBtn");
+  const pageNextBtn = document.getElementById("squareNextPageBtn");
+  if (pagePrevBtn) {
+    pagePrevBtn.addEventListener("click", () => {
+      if (currentPage > 0) {
+        currentPage--;
+        loadPlaylists(state, dom, callbacks);
+        const scrollEl = document.getElementById("squareContentScroll");
+        if (scrollEl) scrollEl.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+  }
+  if (pageNextBtn) {
+    pageNextBtn.addEventListener("click", () => {
+      currentPage++;
+      loadPlaylists(state, dom, callbacks);
+      const scrollEl = document.getElementById("squareContentScroll");
+      if (scrollEl) scrollEl.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
   // 预热拉取分类列表
   await loadCategories(state, dom, callbacks);
 }
@@ -430,8 +452,25 @@ export async function loadPlaylists(state, dom, callbacks = {}) {
     }
 
     const playlists = json.data;
+    const paginationEl = document.getElementById("squarePagination");
+    const pagePrevBtn = document.getElementById("squarePrevPageBtn");
+    const pageNextBtn = document.getElementById("squareNextPageBtn");
+    const pageInfoEl = document.getElementById("squarePageInfo");
+
+    if (paginationEl) {
+      paginationEl.style.display = "flex";
+      if (pagePrevBtn) pagePrevBtn.disabled = (currentPage === 0);
+      if (pageNextBtn) pageNextBtn.disabled = (playlists.length < 30);
+      if (pageInfoEl) pageInfoEl.textContent = `第 ${currentPage + 1} 页`;
+    }
+
     if (playlists.length === 0) {
-      gridContainer.innerHTML = `<div class="square-empty-state"><i class="fas fa-music"></i><span>该分类下暂无歌单</span></div>`;
+      if (currentPage > 0) {
+        gridContainer.innerHTML = `<div class=\"square-empty-state\"><i class=\"fas fa-music\"></i><span>没有更多歌单了</span></div>`;
+      } else {
+        gridContainer.innerHTML = `<div class=\"square-empty-state\"><i class=\"fas fa-music\"></i><span>该分类下暂无歌单</span></div>`;
+      }
+      if (pageNextBtn) pageNextBtn.disabled = true;
       return;
     }
 
@@ -507,6 +546,10 @@ export async function searchSquarePlaylists(keyword, state, dom, callbacks = {})
     }
 
     const playlists = json.data;
+    const paginationEl = document.getElementById("squarePagination");
+    if (paginationEl) {
+      paginationEl.style.display = "none"; // 搜索结果隐藏翻页
+    }
     if (playlists.length === 0) {
       gridContainer.innerHTML = `<div class="square-empty-state"><i class="fas fa-search"></i><span>未找到「${keyword}」相关的歌单</span></div>`;
       return;

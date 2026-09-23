@@ -364,7 +364,70 @@
     background: rgba(255, 255, 255, 0.18);
 }
 
-/* ─── 歌单卡片宽屏网格与滚动区域 ─────────────────────────────────── */
+/* ─── 歌单翻页控制器 ─────────────────────────────────── */
+.square-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 30px 0 20px;
+    user-select: none;
+}
+
+.square-page-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 18px;
+    border-radius: 999px;
+    border: 1px solid var(--apple-glass-border);
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--text-color);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.dark-mode .square-page-btn {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.square-page-btn:hover:not(:disabled) {
+    background: var(--primary-color);
+    color: #ffffff;
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 163, 127, 0.25);
+}
+
+.square-page-btn:active:not(:disabled) {
+    transform: scale(0.96);
+}
+
+.square-page-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.square-page-btn .apple-svg-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.square-page-info {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 60px;
+    text-align: center;
+}
+
 .square-content-scroll {
     flex: 1;
     overflow-y: auto;

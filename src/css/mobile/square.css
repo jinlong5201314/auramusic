@@ -158,6 +158,17 @@ body.mobile-view .square-search-box {
     display: none !important; /* 移动端保持极简顶栏 */
 }
 
+body.mobile-view .square-pagination {
+    padding: 20px 0 15px !important;
+    gap: 12px !important;
+}
+
+body.mobile-view .square-page-btn {
+    height: 32px !important;
+    padding: 0 14px !important;
+    font-size: 12px !important;
+}
+
 body.mobile-view .close-square-btn {
     height: 32px !important;
     padding: 0 14px !important;
