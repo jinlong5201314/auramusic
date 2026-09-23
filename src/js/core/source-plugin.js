@@ -186,8 +186,20 @@ class LxMusicPluginEngine {
             },
             request: (url, options, callback) => {
                 engine.httpFetch(url, options)
-                    .then((res) => callback(null, res))
-                    .catch((err) => callback(err, null));
+                    .then((res) => {
+                        try {
+                            if (typeof callback === "function") callback(null, res);
+                        } catch (cbErr) {
+                            console.warn("[LX Sandbox] 脚本数据回调执行异常 (已安全隔离):", cbErr.message);
+                        }
+                    })
+                    .catch((err) => {
+                        try {
+                            if (typeof callback === "function") callback(err, null);
+                        } catch (cbErr) {
+                            console.warn("[LX Sandbox] 脚本错误回调执行异常 (已安全隔离):", cbErr.message);
+                        }
+                    });
             },
             utils: {
                 buffer: {
@@ -204,6 +216,26 @@ class LxMusicPluginEngine {
 
         window.lx = lxHost;
         globalThis.lx = lxHost;
+
+        // 全局拦截第三方音源脚本在异步 Promise 中抛出的未捕获错误，防止控制台爆红
+        if (typeof window !== "undefined" && !window.__LX_REJECTION_LISTENER_BOUND__) {
+            window.__LX_REJECTION_LISTENER_BOUND__ = true;
+            window.addEventListener("unhandledrejection", (event) => {
+                const msg = event?.reason?.message || String(event?.reason || "");
+                if (
+                    msg.includes("音源已关闭") ||
+                    msg.includes("脚本初始化失败") ||
+                    msg.includes("lerd.dpdns.org") ||
+                    msg.includes("lingchuan") ||
+                    msg.includes("lxmusic") ||
+                    msg.includes("sixyin") ||
+                    msg.includes("reading 'trim'")
+                ) {
+                    console.warn("[LX Sandbox] 已安全拦截第三方音源脚本异步异常:", msg);
+                    event.preventDefault();
+                }
+            });
+        }
     }
 
     /**
@@ -255,8 +287,12 @@ class LxMusicPluginEngine {
 
             this.initSandbox();
 
-            const runner = new Function(code);
-            runner();
+            try {
+                const runner = new Function(code);
+                runner();
+            } catch (evalErr) {
+                console.warn(`[LX Sandbox] 音源脚本执行警告 (${target.name}):`, evalErr.message);
+            }
 
             this.saveSourcesToStorage();
             this.status = "ready";
@@ -429,6 +465,11 @@ class LxMusicPluginEngine {
 
         for (let i = 0; i < candidateSources.length; i++) {
             const currentSrc = candidateSources[i];
+            // 若音源最近连续报错触发熔断冷却，跳过避免重复报错
+            if (currentSrc._failCooldown && Date.now() < currentSrc._failCooldown) {
+                continue;
+            }
+
             const isFallbackSrc = i > 0;
             const srcDisplayName = isFallbackSrc ? `${currentSrc.name || "备用源"}(自动容灾)` : (currentSrc.name || "自定义音源");
 
@@ -436,7 +477,15 @@ class LxMusicPluginEngine {
                 if (isFallbackSrc) {
                     console.log(`[LX Failover] 主源未命中，自动切换备用音源【${currentSrc.name}】进行容灾解析...`);
                     const switched = await this.activateSource(currentSrc.id);
-                    if (!switched) continue;
+                    if (!switched) {
+                        currentSrc._failCooldown = Date.now() + 120000;
+                        continue;
+                    }
+                }
+
+                if (typeof this.registeredHandler !== "function") {
+                    currentSrc._failCooldown = Date.now() + 120000;
+                    continue;
                 }
 
                 console.log(`[LX Sandbox] 正在尝试通过音源【${currentSrc.name}】解析: ${song.name} (${lxSource} / ${lxQuality})`);
@@ -445,19 +494,20 @@ class LxMusicPluginEngine {
                     setTimeout(() => reject(new Error("音源响应超时 (2.8s)")), 2800);
                 });
 
-                const execPromise = this.registeredHandler({
+                const execPromise = Promise.resolve().then(() => this.registeredHandler({
                     action: "musicUrl",
                     source: lxSource,
                     info: {
                         type: lxQuality,
                         musicInfo
                     }
-                });
+                }));
 
                 const resultUrl = await Promise.race([execPromise, timeoutPromise]);
                 if (await isAudioUrlValid(resultUrl)) {
                     console.log(`[LX Sandbox] 音源【${currentSrc.name}】解析成功: ${resultUrl.slice(0, 60)}...`);
                     this.lastResolvedSourceName = srcDisplayName;
+                    delete currentSrc._failCooldown;
                     // 恢复原本选中的默认源状态标识
                     if (isFallbackSrc && originalActiveId) this.activeSourceId = originalActiveId;
                     return resultUrl;
@@ -467,7 +517,7 @@ class LxMusicPluginEngine {
                 if (lxSource !== "wy" && song.name) {
                     console.log(`[LX Sandbox] 音源【${currentSrc.name}】在【${lxSource}】未出链，尝试同名跨源至【wy】...`);
                     try {
-                        const crossPromise = this.registeredHandler({
+                        const crossPromise = Promise.resolve().then(() => this.registeredHandler({
                             action: "musicUrl",
                             source: "wy",
                             info: {
@@ -477,7 +527,7 @@ class LxMusicPluginEngine {
                                     id: String(song.lyric_id || song.id || ""),
                                 }
                             }
-                        });
+                        }));
                         const crossUrl = await Promise.race([crossPromise, new Promise((_, reject) => setTimeout(() => reject(new Error("跨源超时")), 2500))]);
                         if (await isAudioUrlValid(crossUrl)) {
                             console.log(`[LX Sandbox] 音源【${currentSrc.name}】跨源至【wy】解析成功: ${crossUrl.slice(0, 60)}...`);

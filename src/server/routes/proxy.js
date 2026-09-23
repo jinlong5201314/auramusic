@@ -542,18 +542,22 @@ module.exports = function createProxyRouter() {
     res.status(204)
       .set({
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET,HEAD,OPTIONS',
+        'Access-Control-Allow-Methods': 'GET,HEAD,POST,OPTIONS',
         'Access-Control-Allow-Headers': '*',
         'Access-Control-Max-Age': '86400',
       })
       .end();
   });
 
-  router.get('/', async (req, res) => {
+  router.all('/', async (req, res) => {
     const target = req.query.target;
 
     if (target) {
       return proxyKuwoAudio(target, req, res);
+    }
+
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      return res.status(405).send('Method not allowed');
     }
 
     // 重建完整 URL（含查询参数）给缓存 key 使用

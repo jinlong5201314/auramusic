@@ -34,6 +34,11 @@ function isPublicPath(pathname: string): boolean {
 
 async function authMiddleware(context: any) {
   const { request, env } = context;
+
+  if (request.method === "OPTIONS") {
+    return context.next();
+  }
+
   const password = env.PASSWORD;
 
   if (typeof password !== "string" || !password) {

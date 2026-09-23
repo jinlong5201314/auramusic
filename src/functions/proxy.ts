@@ -23,7 +23,7 @@ function handleOptions(): Response {
     status: 204,
     headers: {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET,HEAD,OPTIONS",
+      "Access-Control-Allow-Methods": "GET,HEAD,POST,OPTIONS",
       "Access-Control-Allow-Headers": "*",
       "Access-Control-Max-Age": "86400",
     },
@@ -603,15 +603,15 @@ export async function onRequest({ request, waitUntil, env }: { request: Request;
     return handleOptions();
   }
 
-  if (request.method !== "GET" && request.method !== "HEAD") {
-    return new Response("Method not allowed", { status: 405 });
-  }
-
   const url = new URL(request.url);
   const target = url.searchParams.get("target");
 
   if (target) {
     return proxyUniversalTarget(target, request);
+  }
+
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return new Response("Method not allowed", { status: 405 });
   }
 
   return proxyApiRequest(url, request, waitUntil, apiBaseUrl);
