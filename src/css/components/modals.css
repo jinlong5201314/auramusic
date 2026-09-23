@@ -208,53 +208,136 @@
     transform: none;
 }
 
-.lx-source-status-box {
+.lx-source-list {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 14px;
-    border-radius: 10px;
-    background: rgba(0, 113, 227, 0.06);
-    border: 1px solid rgba(0, 113, 227, 0.18);
-}
-
-.dark-mode .lx-source-status-box {
-    background: rgba(41, 151, 255, 0.08);
-    border-color: rgba(41, 151, 255, 0.22);
-}
-
-.lx-source-info {
-    display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 8px;
-    font-size: 13px;
+    margin-top: 4px;
 }
 
-.lx-badge {
-    padding: 2px 6px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    background: #34c759;
-    color: #fff;
+.lx-source-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    transition: all 0.2s ease;
 }
 
-.lx-name {
-    font-weight: 600;
+.dark-mode .lx-source-item {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
 }
 
-.lx-ver {
-    color: #86868b;
-    font-size: 12px;
+.lx-source-item.is-active {
+    background: rgba(0, 113, 227, 0.08);
+    border-color: rgba(0, 113, 227, 0.35);
 }
 
-.lx-toggle-label {
+.dark-mode .lx-source-item.is-active {
+    background: rgba(41, 151, 255, 0.12);
+    border-color: rgba(41, 151, 255, 0.4);
+}
+
+.lx-source-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.lx-source-radio {
+    accent-color: var(--primary-color, #0071e3);
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+.lx-source-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.lx-source-title-row {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 13px;
+}
+
+.lx-source-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lx-source-ver-tag {
+    font-size: 11px;
+    color: #86868b;
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.dark-mode .lx-source-ver-tag {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.lx-source-url-text {
+    font-size: 11.5px;
+    color: #86868b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 320px;
+}
+
+.lx-source-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px;
+}
+
+.lx-source-del-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #86868b;
     cursor: pointer;
-    user-select: none;
+    transition: all 0.15s ease;
+}
+
+.lx-source-del-btn:hover {
+    background: rgba(255, 59, 48, 0.12);
+    color: #ff3b30;
+}
+
+.lx-source-empty {
+    text-align: center;
+    padding: 18px 12px;
+    font-size: 12.5px;
+    color: #86868b;
+    border: 1px dashed rgba(0, 0, 0, 0.12);
+    border-radius: 10px;
+}
+
+.dark-mode .lx-source-empty {
+    border-color: rgba(255, 255, 255, 0.12);
 }
 
 .settings-section h3 {

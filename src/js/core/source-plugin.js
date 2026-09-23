@@ -1,19 +1,76 @@
 /**
  * Solara 洛雪自定义音乐源运行时插件沙箱 (LX Music Source Engine)
- * 兼容标准洛雪桌面端自定义脚本规范 (支持 QDY、星海、六音等脚本)
+ * 支持多音源订阅管理、自定义切换、状态漫游与标准 globalThis.lx 规范
  */
 
-import { safeGetLocalStorage, safeSetLocalStorage } from "./storage.js";
+import { safeGetLocalStorage, safeSetLocalStorage, persistStorageItems } from "./storage.js";
 
 class LxMusicPluginEngine {
     constructor() {
-        this.currentScriptUrl = safeGetLocalStorage("lxMusicSourceUrl") || "";
-        this.isEnabled = safeGetLocalStorage("lxMusicSourceEnabled") === "true";
+        this.sources = this.loadSourcesFromStorage();
+        this.activeSourceId = safeGetLocalStorage("lxMusicActiveSourceId") || (this.sources[0]?.id || "");
+        this.isEnabled = safeGetLocalStorage("lxMusicSourceEnabled") !== "false";
         this.registeredHandler = null;
         this.scriptInfo = null;
         this.status = "idle"; // idle | loading | ready | error
         this.lastError = null;
-        this.listeners = new Map();
+    }
+
+    /**
+     * 从本地持久化还原音源列表（兼容旧版本单 URL 迁移）
+     */
+    loadSourcesFromStorage() {
+        const raw = safeGetLocalStorage("lxMusicSourcesList");
+        if (raw) {
+            try {
+                const list = JSON.parse(raw);
+                if (Array.isArray(list) && list.length > 0) {
+                    return list;
+                }
+            } catch (e) {
+                console.warn("[LX Engine] 解析音源列表失败:", e);
+            }
+        }
+
+        // 兼容单源旧字段 lxMusicSourceUrl
+        const oldUrl = safeGetLocalStorage("lxMusicSourceUrl");
+        if (oldUrl) {
+            return [{
+                id: "src_" + Math.random().toString(36).substring(2, 9),
+                name: "自定义音源",
+                url: oldUrl,
+                version: "1.0.0",
+                author: "社区",
+                addedAt: Date.now()
+            }];
+        }
+
+        return [];
+    }
+
+    /**
+     * 保存音源列表到 LocalStorage 并同步 D1
+     */
+    saveSourcesToStorage() {
+        safeSetLocalStorage("lxMusicSourcesList", JSON.stringify(this.sources));
+        safeSetLocalStorage("lxMusicActiveSourceId", this.activeSourceId);
+        safeSetLocalStorage("lxMusicSourceEnabled", String(this.isEnabled));
+
+        if (typeof persistStorageItems === "function") {
+            persistStorageItems({
+                lxMusicSourcesList: JSON.stringify(this.sources),
+                lxMusicActiveSourceId: this.activeSourceId,
+                lxMusicSourceEnabled: String(this.isEnabled)
+            });
+        }
+    }
+
+    /**
+     * 获取当前生效的音源配置对象
+     */
+    getActiveSource() {
+        if (!this.sources.length) return null;
+        return this.sources.find(s => s.id === this.activeSourceId) || this.sources[0];
     }
 
     /**
@@ -128,7 +185,6 @@ class LxMusicPluginEngine {
                 }
             },
             request: (url, options, callback) => {
-                // 回调风格转 Promise
                 engine.httpFetch(url, options)
                     .then((res) => callback(null, res))
                     .catch((err) => callback(err, null));
@@ -140,7 +196,6 @@ class LxMusicPluginEngine {
                 },
                 crypto: {
                     md5: (str) => {
-                        // 简易 MD5 实现或回退
                         return typeof window.CryptoJS !== "undefined" ? window.CryptoJS.MD5(str).toString() : "";
                     }
                 }
@@ -155,7 +210,7 @@ class LxMusicPluginEngine {
      * 提取并解析脚本头部元信息
      */
     parseMetadata(code) {
-        const head = code.slice(0, 1000);
+        const head = code.slice(0, 1500);
         const nameMatch = head.match(/@name\s+([^\n\r]+)/);
         const descMatch = head.match(/@description\s+([^\n\r]+)/);
         const verMatch = head.match(/@version\s+([^\n\r]+)/);
@@ -170,62 +225,128 @@ class LxMusicPluginEngine {
     }
 
     /**
-     * 加载并执行远程音源脚本
+     * 激活并执行指定 ID 的音源脚本
      */
-    async loadScript(url, forceEnable = true) {
-        if (!url || typeof url !== "string") {
+    async activateSource(sourceId) {
+        const target = this.sources.find(s => s.id === sourceId);
+        if (!target) {
             this.status = "idle";
             this.registeredHandler = null;
             return false;
         }
 
+        this.activeSourceId = sourceId;
         this.status = "loading";
         this.lastError = null;
 
         try {
-            console.log(`[LX Sandbox] 正在下载音源脚本: ${url}`);
-            const resp = await fetch(url);
+            console.log(`[LX Sandbox] 正在切换并加载音源: ${target.name} (${target.url})`);
+            const resp = await fetch(target.url);
             if (!resp.ok) {
                 throw new Error(`脚本下载失败: HTTP ${resp.status}`);
             }
             const code = await resp.text();
             this.scriptInfo = this.parseMetadata(code);
 
-            // 初始化宿主环境
+            // 更新已存信息以反映最新脚本属性
+            target.name = this.scriptInfo.name;
+            target.version = this.scriptInfo.version;
+            target.author = this.scriptInfo.author;
+
             this.initSandbox();
 
-            // 执行脚本代码 (Function 作用域沙箱)
             const runner = new Function(code);
             runner();
 
-            this.currentScriptUrl = url;
-            this.isEnabled = forceEnable;
-            safeSetLocalStorage("lxMusicSourceUrl", url);
-            safeSetLocalStorage("lxMusicSourceEnabled", String(forceEnable));
-
+            this.saveSourcesToStorage();
             this.status = "ready";
             console.log(`[LX Sandbox] 音源脚本已就绪: ${this.scriptInfo.name} (${this.scriptInfo.version})`);
             return true;
         } catch (err) {
             this.status = "error";
             this.lastError = err.message;
-            console.error("[LX Sandbox] 音源加载失败:", err);
+            console.error("[LX Sandbox] 音源激活失败:", err);
             return false;
         }
     }
 
     /**
-     * 核心调度：通过自定义音源解析歌曲直链
-     * @param {Object} song 歌曲对象 { id, name, artist, source }
-     * @param {String} quality 音质 '128' | '320' | 'flac'
-     * @returns {Promise<string|null>} 解析成功的音频直链
+     * 添加新的音源脚本并自动设为当前激活源
+     */
+    async addSource(url) {
+        if (!url || typeof url !== "string") {
+            throw new Error("请输入有效的音源脚本 URL");
+        }
+        url = url.trim();
+
+        // 检查是否已存在相同 URL
+        const existing = this.sources.find(s => s.url === url);
+        if (existing) {
+            await this.activateSource(existing.id);
+            return existing;
+        }
+
+        // 预探测并下载脚本元信息
+        const resp = await fetch(url);
+        if (!resp.ok) {
+            throw new Error(`脚本下载失败: HTTP ${resp.status}`);
+        }
+        const code = await resp.text();
+        const meta = this.parseMetadata(code);
+
+        const newSource = {
+            id: "src_" + Math.random().toString(36).substring(2, 9),
+            name: meta.name || "自定义音源",
+            url: url,
+            version: meta.version || "1.0.0",
+            author: meta.author || "社区作者",
+            description: meta.description || "",
+            addedAt: Date.now()
+        };
+
+        this.sources.push(newSource);
+        this.activeSourceId = newSource.id;
+        this.isEnabled = true;
+
+        this.initSandbox();
+        const runner = new Function(code);
+        runner();
+
+        this.scriptInfo = meta;
+        this.status = "ready";
+        this.saveSourcesToStorage();
+        return newSource;
+    }
+
+    /**
+     * 移除指定 ID 的音源
+     */
+    removeSource(sourceId) {
+        const idx = this.sources.findIndex(s => s.id === sourceId);
+        if (idx === -1) return;
+
+        this.sources.splice(idx, 1);
+        if (this.activeSourceId === sourceId) {
+            if (this.sources.length > 0) {
+                this.activateSource(this.sources[0].id);
+            } else {
+                this.activeSourceId = "";
+                this.status = "idle";
+                this.registeredHandler = null;
+                this.scriptInfo = null;
+            }
+        }
+        this.saveSourcesToStorage();
+    }
+
+    /**
+     * 核心调度：通过当前激活的音源解析歌曲直链
      */
     async resolveAudioUrl(song, quality = "320") {
         if (!this.isEnabled || !this.registeredHandler || this.status !== "ready") {
             return null;
         }
 
-        // 映射平台 ID 为洛雪规范
         const sourceMap = {
             netease: "wy",
             wy: "wy",
@@ -240,7 +361,6 @@ class LxMusicPluginEngine {
         };
         const lxSource = sourceMap[song.source] || "wy";
 
-        // 映射音质
         const qualityMap = {
             "128": "128k",
             "192": "192k",
@@ -250,7 +370,6 @@ class LxMusicPluginEngine {
         };
         const lxQuality = qualityMap[quality] || "320k";
 
-        // 构造洛雪规范的标准 songInfo
         const musicInfo = {
             id: String(song.id || song.songmid || ""),
             songmid: String(song.songmid || song.id || ""),
@@ -259,9 +378,9 @@ class LxMusicPluginEngine {
             hash: song.hash || song.id || ""
         };
 
-        console.log(`[LX Sandbox] 正在尝试通过自定义音源 [${this.scriptInfo?.name}] 解析: ${song.name} (${lxSource} / ${lxQuality})`);
+        const activeSrc = this.getActiveSource();
+        console.log(`[LX Sandbox] 正在尝试通过音源【${activeSrc?.name || "自定义音源"}】解析: ${song.name} (${lxSource} / ${lxQuality})`);
 
-        // 设置 3.5 秒严格超时，绝不让外部音源拖慢播放体验
         const timeoutPromise = new Promise((_, reject) => {
             setTimeout(() => reject(new Error("自定义音源响应超时 (3.5s)")), 3500);
         });
@@ -283,7 +402,7 @@ class LxMusicPluginEngine {
             }
             return null;
         } catch (err) {
-            console.warn(`[LX Sandbox] 自定义音源解析未命中或异常 (${err.message})，平滑降级至 Solara 原生直连`);
+            console.warn(`[LX Sandbox] 音源解析未命中或异常 (${err.message})，平滑降级至 Solara 原生直连`);
             return null;
         }
     }

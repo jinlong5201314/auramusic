@@ -104,8 +104,10 @@ body.mobile-view .lx-source-btn {
     justify-content: center;
 }
 
-body.mobile-view .lx-source-status-box {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
+body.mobile-view .lx-source-item {
+    padding: 10px 12px;
+}
+
+body.mobile-view .lx-source-url-text {
+    max-width: 180px;
 }

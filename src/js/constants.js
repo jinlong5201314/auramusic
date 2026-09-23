@@ -73,7 +73,8 @@ export const STORAGE_KEYS_TO_SYNC = new Set([
     "searchSource",
     "lastSearchState.v1",
     "radarSettings",
-    "lxMusicSourceUrl",
+    "lxMusicSourcesList",
+    "lxMusicActiveSourceId",
     "lxMusicSourceEnabled",
 ]);
 

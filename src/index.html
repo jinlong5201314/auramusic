@@ -701,22 +701,14 @@
         <div class="modal-body">
             <section class="settings-section">
                 <h3>音乐源订阅 (洛雪规范)</h3>
-                <p class="settings-hint">支持导入社区标准洛雪 (LX Music) 自定义音源脚本 (如 QDY、星海等)，提供高品质无损音轨解析与多源回退。</p>
+                <p class="settings-hint">支持添加并管理多个社区洛雪自定义音源脚本 (如 QDY、星海等)，可自由勾选切换当前生效的音源。</p>
                 <div class="lx-source-container">
                     <div class="lx-source-input-row">
                         <input type="url" id="lxSourceUrlInput" class="lx-source-input" placeholder="输入音源脚本链接 (如 https://.../latest.js)" spellcheck="false" autocomplete="off" />
-                        <button type="button" id="loadLxSourceBtn" class="lx-source-btn">加载并测试</button>
+                        <button type="button" id="loadLxSourceBtn" class="lx-source-btn">添加音源</button>
                     </div>
-                    <div id="lxSourceStatusBox" class="lx-source-status-box" style="display: none;">
-                        <div class="lx-source-info">
-                            <span class="lx-badge" id="lxSourceBadge">未激活</span>
-                            <span class="lx-name" id="lxSourceName">自定义音源</span>
-                            <span class="lx-ver" id="lxSourceVer"></span>
-                        </div>
-                        <label class="lx-toggle-label">
-                            <input type="checkbox" id="lxSourceToggle" />
-                            <span>启用此音源</span>
-                        </label>
+                    <div id="lxSourceList" class="lx-source-list">
+                        <!-- 动态渲染多音源卡片列表 -->
                     </div>
                 </div>
             </section>

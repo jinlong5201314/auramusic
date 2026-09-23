@@ -89,39 +89,78 @@ export function openSettingsModal(dom, state = null) {
 
         // 同步音源订阅信息
         if (dom.lxSourceUrlInput) {
-            dom.lxSourceUrlInput.value = lxPluginEngine.currentScriptUrl || "";
+            dom.lxSourceUrlInput.value = "";
         }
-        updateLxSourceUI(dom);
+        renderLxSourceList(dom);
 
         dom.settingsModal.classList.add("show");
         dom.settingsModal.setAttribute("aria-hidden", "false");
     }
 }
 
-export function updateLxSourceUI(dom) {
-    if (!dom.lxSourceStatusBox) return;
-    if (lxPluginEngine.status === "ready" && lxPluginEngine.scriptInfo) {
-        dom.lxSourceStatusBox.style.display = "flex";
-        if (dom.lxSourceName) dom.lxSourceName.textContent = lxPluginEngine.scriptInfo.name;
-        if (dom.lxSourceVer) dom.lxSourceVer.textContent = `v${lxPluginEngine.scriptInfo.version}`;
-        if (dom.lxSourceBadge) {
-            dom.lxSourceBadge.textContent = lxPluginEngine.isEnabled ? "已启用" : "已暂停";
-            dom.lxSourceBadge.style.background = lxPluginEngine.isEnabled ? "#34c759" : "#86868b";
-        }
-        if (dom.lxSourceToggle) {
-            dom.lxSourceToggle.checked = lxPluginEngine.isEnabled;
-        }
-    } else if (lxPluginEngine.status === "error") {
-        dom.lxSourceStatusBox.style.display = "flex";
-        if (dom.lxSourceName) dom.lxSourceName.textContent = "加载失败";
-        if (dom.lxSourceVer) dom.lxSourceVer.textContent = lxPluginEngine.lastError ? `(${lxPluginEngine.lastError})` : "";
-        if (dom.lxSourceBadge) {
-            dom.lxSourceBadge.textContent = "错误";
-            dom.lxSourceBadge.style.background = "#ff3b30";
-        }
-    } else {
-        dom.lxSourceStatusBox.style.display = "none";
+export function renderLxSourceList(dom) {
+    if (!dom || !dom.lxSourceList) return;
+
+    const sources = lxPluginEngine.sources || [];
+    if (sources.length === 0) {
+        dom.lxSourceList.innerHTML = `<div class="lx-source-empty">暂无导入的自定义音源脚本，请在上方输入链接添加</div>`;
+        return;
     }
+
+    dom.lxSourceList.innerHTML = sources.map((src) => {
+        const isActive = src.id === lxPluginEngine.activeSourceId;
+        const activeClass = isActive ? "is-active" : "";
+        const checkedAttr = isActive ? "checked" : "";
+        return `
+            <div class="lx-source-item ${activeClass}" data-id="${src.id}">
+                <div class="lx-source-main" data-id="${src.id}">
+                    <input type="radio" name="lxActiveSourceRadio" class="lx-source-radio" value="${src.id}" ${checkedAttr} />
+                    <div class="lx-source-meta">
+                        <div class="lx-source-title-row">
+                            <span class="lx-source-title">${src.name || "自定义音源"}</span>
+                            <span class="lx-source-ver-tag">v${src.version || "1.0.0"}</span>
+                        </div>
+                        <span class="lx-source-url-text" title="${src.url}">${src.url}</span>
+                    </div>
+                </div>
+                <div class="lx-source-actions">
+                    <button type="button" class="lx-source-del-btn" data-id="${src.id}" title="删除此音源">
+                        <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    // 绑定单选切换事件
+    dom.lxSourceList.querySelectorAll(".lx-source-main").forEach(item => {
+        item.addEventListener("click", async () => {
+            const id = item.getAttribute("data-id");
+            if (id && id !== lxPluginEngine.activeSourceId) {
+                showNotification("正在切换音源...", "info", dom);
+                const ok = await lxPluginEngine.activateSource(id);
+                renderLxSourceList(dom);
+                if (ok) {
+                    showNotification(`已切换生效音源: 【${lxPluginEngine.scriptInfo?.name || "自定义音源"}】`, "success", dom);
+                } else {
+                    showNotification(`音源加载异常: ${lxPluginEngine.lastError}`, "error", dom);
+                }
+            }
+        });
+    });
+
+    // 绑定删除按钮事件
+    dom.lxSourceList.querySelectorAll(".lx-source-del-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute("data-id");
+            if (id) {
+                lxPluginEngine.removeSource(id);
+                renderLxSourceList(dom);
+                showNotification("已移除该音源", "info", dom);
+            }
+        });
+    });
 }
 
 export function closeSettingsModal(dom) {
@@ -360,7 +399,7 @@ export function initSettings(dom, state, callbacks = {}) {
         });
     }
 
-    // 绑定洛雪自定义音源加载与测试按钮
+    // 绑定洛雪自定义多音源添加按钮
     if (dom.loadLxSourceBtn && dom.lxSourceUrlInput) {
         dom.loadLxSourceBtn.addEventListener("click", async () => {
             const url = dom.lxSourceUrlInput.value.trim();
@@ -371,42 +410,18 @@ export function initSettings(dom, state, callbacks = {}) {
 
             dom.loadLxSourceBtn.disabled = true;
             const origHtml = dom.loadLxSourceBtn.innerHTML;
-            dom.loadLxSourceBtn.innerHTML = '<span class="loader" style="width:14px;height:14px;border-width:2px;"></span><span>加载测试中...</span>';
+            dom.loadLxSourceBtn.innerHTML = '<span class="loader" style="width:14px;height:14px;border-width:2px;"></span><span>添加解析中...</span>';
 
             try {
-                const ok = await lxPluginEngine.loadScript(url, true);
-                updateLxSourceUI(dom);
-                if (ok) {
-                    showNotification(`音源脚本【${lxPluginEngine.scriptInfo?.name || "自定义音源"}】加载就绪并启用`, "success", dom);
-                    if (typeof persistStorageItems === "function") {
-                        persistStorageItems({
-                            lxMusicSourceUrl: url,
-                            lxMusicSourceEnabled: "true"
-                        });
-                    }
-                } else {
-                    showNotification(lxPluginEngine.lastError || "音源加载失败", "error", dom);
-                }
+                const added = await lxPluginEngine.addSource(url);
+                dom.lxSourceUrlInput.value = "";
+                renderLxSourceList(dom);
+                showNotification(`成功添加音源【${added.name || "自定义音源"}】并设为默认`, "success", dom);
             } catch (err) {
-                showNotification(`音源加载异常: ${err.message}`, "error", dom);
+                showNotification(`音源添加失败: ${err.message}`, "error", dom);
             } finally {
                 dom.loadLxSourceBtn.disabled = false;
                 dom.loadLxSourceBtn.innerHTML = origHtml;
-            }
-        });
-    }
-
-    // 绑定音源启用/暂停开关
-    if (dom.lxSourceToggle) {
-        dom.lxSourceToggle.addEventListener("change", (e) => {
-            lxPluginEngine.isEnabled = Boolean(e.target.checked);
-            safeSetLocalStorage("lxMusicSourceEnabled", String(lxPluginEngine.isEnabled));
-            updateLxSourceUI(dom);
-            showNotification(lxPluginEngine.isEnabled ? "已启用自定义音源" : "已暂停自定义音源 (使用原生直连)", "info", dom);
-            if (typeof persistStorageItems === "function") {
-                persistStorageItems({
-                    lxMusicSourceEnabled: String(lxPluginEngine.isEnabled)
-                });
             }
         });
     }

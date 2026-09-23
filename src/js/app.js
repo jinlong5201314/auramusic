@@ -1570,11 +1570,17 @@ export async function bootstrap() {
     
     // 初始化并恢复自定义音源订阅（如果此前已配置并启用）
     try {
+        const savedSources = safeGetLocalStorage("lxMusicSourcesList");
+        const savedActiveId = safeGetLocalStorage("lxMusicActiveSourceId");
         const savedLxUrl = safeGetLocalStorage("lxMusicSourceUrl");
         const savedLxEnabled = safeGetLocalStorage("lxMusicSourceEnabled") !== "false";
-        if (savedLxUrl && savedLxEnabled) {
+
+        if ((savedSources || savedLxUrl) && savedLxEnabled) {
             import("./core/source-plugin.js").then(({ lxPluginEngine }) => {
-                lxPluginEngine.loadScript(savedLxUrl, true).catch(e => console.warn("[LX Engine AutoLoad]", e));
+                const targetId = savedActiveId || lxPluginEngine.activeSourceId;
+                if (targetId) {
+                    lxPluginEngine.activateSource(targetId).catch(e => console.warn("[LX Engine AutoLoad]", e));
+                }
             });
         }
     } catch (e) {
