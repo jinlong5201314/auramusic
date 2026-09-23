@@ -140,11 +140,15 @@ export function renderLxSourceList(dom) {
                 showNotification("正在切换音源...", "info", dom);
                 const ok = await lxPluginEngine.activateSource(id);
                 renderLxSourceList(dom);
-                if (ok) {
-                    showNotification(`已切换生效音源: 【${lxPluginEngine.scriptInfo?.name || "自定义音源"}】`, "success", dom);
-                } else {
-                    showNotification(`音源加载异常: ${lxPluginEngine.lastError}`, "error", dom);
-                }
+            // 立即向云端 D1 增量同步音源列表与状态
+            if (typeof persistStorageItems === "function") {
+                persistStorageItems({
+                    lxMusicSourcesList: JSON.stringify(lxPluginEngine.sources),
+                    lxMusicActiveSourceId: lxPluginEngine.activeSourceId,
+                    lxMusicSourceEnabled: String(lxPluginEngine.isEnabled)
+                });
+            }
+            showNotification(ok ? `已切换生效音源: 【${lxPluginEngine.scriptInfo?.name || "自定义音源"}】` : `音源加载异常: ${lxPluginEngine.lastError}`, ok ? "success" : "error", dom);
             }
         });
     });
@@ -157,6 +161,13 @@ export function renderLxSourceList(dom) {
             if (id) {
                 lxPluginEngine.removeSource(id);
                 renderLxSourceList(dom);
+                if (typeof persistStorageItems === "function") {
+                    persistStorageItems({
+                        lxMusicSourcesList: JSON.stringify(lxPluginEngine.sources),
+                        lxMusicActiveSourceId: lxPluginEngine.activeSourceId,
+                        lxMusicSourceEnabled: String(lxPluginEngine.isEnabled)
+                    });
+                }
                 showNotification("已移除该音源", "info", dom);
             }
         });

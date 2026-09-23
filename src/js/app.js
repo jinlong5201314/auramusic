@@ -1486,6 +1486,37 @@ export async function applyPersistentSnapshotFromRemote(data) {
         }
     }
 
+    // 核心：从 D1 漫游恢复多音源列表与当前激活源
+    if (typeof data.lxMusicSourcesList === "string" && data.lxMusicSourcesList) {
+        safeSetLocalStorage("lxMusicSourcesList", data.lxMusicSourcesList, { skipRemote: true });
+        try {
+            const list = JSON.parse(data.lxMusicSourcesList);
+            if (Array.isArray(list)) {
+                import("./core/source-plugin.js").then(({ lxPluginEngine }) => {
+                    lxPluginEngine.sources = list;
+                    if (typeof data.lxMusicActiveSourceId === "string" && data.lxMusicActiveSourceId) {
+                        lxPluginEngine.activeSourceId = data.lxMusicActiveSourceId;
+                        safeSetLocalStorage("lxMusicActiveSourceId", data.lxMusicActiveSourceId, { skipRemote: true });
+                    }
+                    if (typeof data.lxMusicSourceEnabled === "string") {
+                        lxPluginEngine.isEnabled = data.lxMusicSourceEnabled !== "false";
+                        safeSetLocalStorage("lxMusicSourceEnabled", data.lxMusicSourceEnabled, { skipRemote: true });
+                    }
+                    const activeId = lxPluginEngine.activeSourceId || list[0]?.id;
+                    if (activeId) {
+                        lxPluginEngine.activateSource(activeId).catch(e => console.warn("[LX D1 Sync]", e));
+                    }
+                    // 如果设置弹窗正打开着，刷新列表渲染
+                    import("./features/settings.js").then(({ renderLxSourceList }) => {
+                        renderLxSourceList(dom);
+                    });
+                });
+            }
+        } catch (e) {
+            console.warn("[LX D1 Sync] 还原音源列表失败:", e);
+        }
+    }
+
     // 重新校准状态自洽
     validateStateConsistency(dom, {
         debugLog,
