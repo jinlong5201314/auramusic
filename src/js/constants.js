@@ -73,6 +73,8 @@ export const STORAGE_KEYS_TO_SYNC = new Set([
     "searchSource",
     "lastSearchState.v1",
     "radarSettings",
+    "lxMusicSourceUrl",
+    "lxMusicSourceEnabled",
 ]);
 
 export const PALETTE_STORAGE_KEY = "paletteCache.v3";

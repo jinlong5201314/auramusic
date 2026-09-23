@@ -40,18 +40,24 @@ async function proxyKuwoAudio(targetUrl, req, res) {
     return res.status(400).send('Invalid target');
   }
 
-  if (!isAllowedKuwoHost(parsed.hostname)) {
-    return res.status(400).send('Invalid target');
-  }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     return res.status(400).send('Invalid target');
   }
-  parsed.protocol = 'http:';
 
   const headers = {
-    'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
-    'Referer': 'https://www.kuwo.cn/',
+    'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    'Accept': req.headers['accept'] || '*/*',
   };
+
+  if (isAllowedKuwoHost(parsed.hostname)) {
+    headers['Referer'] = 'https://www.kuwo.cn/';
+    parsed.protocol = 'http:';
+  } else if (parsed.hostname.includes('qq.com')) {
+    headers['Referer'] = 'https://y.qq.com/';
+  } else if (parsed.hostname.includes('163.com')) {
+    headers['Referer'] = 'https://music.163.com/';
+  }
+
   if (req.headers['range']) headers['Range'] = req.headers['range'];
 
   const controller = new AbortController();
@@ -60,11 +66,22 @@ async function proxyKuwoAudio(targetUrl, req, res) {
   });
 
   try {
-    const upstream = await fetch(parsed.toString(), {
+    const fetchOptions = {
       method: req.method,
       headers,
       signal: controller.signal
-    });
+    };
+
+    if (req.method !== 'GET' && req.method !== 'HEAD' && req.body) {
+      if (typeof req.body === 'object') {
+        fetchOptions.body = JSON.stringify(req.body);
+        headers['Content-Type'] = 'application/json';
+      } else {
+        fetchOptions.body = req.body;
+      }
+    }
+
+    const upstream = await fetch(parsed.toString(), fetchOptions);
     res.status(upstream.status);
 
     for (const h of SAFE_RESPONSE_HEADERS) {
@@ -78,10 +95,9 @@ async function proxyKuwoAudio(targetUrl, req, res) {
     return Readable.fromWeb(upstream.body).pipe(res);
   } catch (err) {
     if (err.name === 'AbortError') {
-      console.log('[Proxy Kuwo] Request aborted by client');
       return;
     }
-    console.error('[Proxy Kuwo]', err);
+    console.error('[Proxy Universal Target Node]', err);
     return res.status(502).send('Upstream error');
   }
 }

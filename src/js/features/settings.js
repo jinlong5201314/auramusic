@@ -6,6 +6,7 @@ import { EXPLORE_RADAR_GENRES, DEFAULT_RADAR_GENRES } from "../constants.js";
 import { safeGetLocalStorage, safeSetLocalStorage, persistStorageItems } from "../core/storage.js";
 import { toggleDebugMode } from "../visual/spotlight.js";
 import { updateAllTabsIndicators } from "./playlist.js";
+import { lxPluginEngine } from "../core/source-plugin.js";
 
 const NOTIFICATION_ICONS = {
     success: `<svg class="notification-svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>`,
@@ -85,8 +86,41 @@ export function openSettingsModal(dom, state = null) {
                 toggleDebugText.textContent = state.debugMode ? "关闭调试模式" : "开启调试模式";
             }
         }
+
+        // 同步音源订阅信息
+        if (dom.lxSourceUrlInput) {
+            dom.lxSourceUrlInput.value = lxPluginEngine.currentScriptUrl || "";
+        }
+        updateLxSourceUI(dom);
+
         dom.settingsModal.classList.add("show");
         dom.settingsModal.setAttribute("aria-hidden", "false");
+    }
+}
+
+export function updateLxSourceUI(dom) {
+    if (!dom.lxSourceStatusBox) return;
+    if (lxPluginEngine.status === "ready" && lxPluginEngine.scriptInfo) {
+        dom.lxSourceStatusBox.style.display = "flex";
+        if (dom.lxSourceName) dom.lxSourceName.textContent = lxPluginEngine.scriptInfo.name;
+        if (dom.lxSourceVer) dom.lxSourceVer.textContent = `v${lxPluginEngine.scriptInfo.version}`;
+        if (dom.lxSourceBadge) {
+            dom.lxSourceBadge.textContent = lxPluginEngine.isEnabled ? "已启用" : "已暂停";
+            dom.lxSourceBadge.style.background = lxPluginEngine.isEnabled ? "#34c759" : "#86868b";
+        }
+        if (dom.lxSourceToggle) {
+            dom.lxSourceToggle.checked = lxPluginEngine.isEnabled;
+        }
+    } else if (lxPluginEngine.status === "error") {
+        dom.lxSourceStatusBox.style.display = "flex";
+        if (dom.lxSourceName) dom.lxSourceName.textContent = "加载失败";
+        if (dom.lxSourceVer) dom.lxSourceVer.textContent = lxPluginEngine.lastError ? `(${lxPluginEngine.lastError})` : "";
+        if (dom.lxSourceBadge) {
+            dom.lxSourceBadge.textContent = "错误";
+            dom.lxSourceBadge.style.background = "#ff3b30";
+        }
+    } else {
+        dom.lxSourceStatusBox.style.display = "none";
     }
 }
 
@@ -322,6 +356,57 @@ export function initSettings(dom, state, callbacks = {}) {
                 }
             } else {
                 console.warn("未提供 manualSync 回调函数");
+            }
+        });
+    }
+
+    // 绑定洛雪自定义音源加载与测试按钮
+    if (dom.loadLxSourceBtn && dom.lxSourceUrlInput) {
+        dom.loadLxSourceBtn.addEventListener("click", async () => {
+            const url = dom.lxSourceUrlInput.value.trim();
+            if (!url) {
+                showNotification("请输入有效的音源脚本 URL", "warning", dom);
+                return;
+            }
+
+            dom.loadLxSourceBtn.disabled = true;
+            const origHtml = dom.loadLxSourceBtn.innerHTML;
+            dom.loadLxSourceBtn.innerHTML = '<span class="loader" style="width:14px;height:14px;border-width:2px;"></span><span>加载测试中...</span>';
+
+            try {
+                const ok = await lxPluginEngine.loadScript(url, true);
+                updateLxSourceUI(dom);
+                if (ok) {
+                    showNotification(`音源脚本【${lxPluginEngine.scriptInfo?.name || "自定义音源"}】加载就绪并启用`, "success", dom);
+                    if (typeof persistStorageItems === "function") {
+                        persistStorageItems({
+                            lxMusicSourceUrl: url,
+                            lxMusicSourceEnabled: "true"
+                        });
+                    }
+                } else {
+                    showNotification(lxPluginEngine.lastError || "音源加载失败", "error", dom);
+                }
+            } catch (err) {
+                showNotification(`音源加载异常: ${err.message}`, "error", dom);
+            } finally {
+                dom.loadLxSourceBtn.disabled = false;
+                dom.loadLxSourceBtn.innerHTML = origHtml;
+            }
+        });
+    }
+
+    // 绑定音源启用/暂停开关
+    if (dom.lxSourceToggle) {
+        dom.lxSourceToggle.addEventListener("change", (e) => {
+            lxPluginEngine.isEnabled = Boolean(e.target.checked);
+            safeSetLocalStorage("lxMusicSourceEnabled", String(lxPluginEngine.isEnabled));
+            updateLxSourceUI(dom);
+            showNotification(lxPluginEngine.isEnabled ? "已启用自定义音源" : "已暂停自定义音源 (使用原生直连)", "info", dom);
+            if (typeof persistStorageItems === "function") {
+                persistStorageItems({
+                    lxMusicSourceEnabled: String(lxPluginEngine.isEnabled)
+                });
             }
         });
     }

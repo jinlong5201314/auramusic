@@ -1567,6 +1567,20 @@ export async function bootstrap() {
     setupEventHandlers();
     initTheme(dom, state);
     initSettings(dom, state, { debugLog, manualSync: handleManualCloudSync });
+    
+    // 初始化并恢复自定义音源订阅（如果此前已配置并启用）
+    try {
+        const savedLxUrl = safeGetLocalStorage("lxMusicSourceUrl");
+        const savedLxEnabled = safeGetLocalStorage("lxMusicSourceEnabled") !== "false";
+        if (savedLxUrl && savedLxEnabled) {
+            import("./core/source-plugin.js").then(({ lxPluginEngine }) => {
+                lxPluginEngine.loadScript(savedLxUrl, true).catch(e => console.warn("[LX Engine AutoLoad]", e));
+            });
+        }
+    } catch (e) {
+        console.warn("[LX Bootstrap]", e);
+    }
+
     initSpotlightEffect();
     initMediaSession(state, dom, {
         playNext: () => playNext(state, dom, getAudioCallbacks()),

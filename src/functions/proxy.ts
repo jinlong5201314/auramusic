@@ -51,36 +51,72 @@ function normalizeKuwoUrl(rawUrl: string): URL | null {
   }
 }
 
-async function proxyKuwoAudio(targetUrl: string, request: Request): Promise<Response> {
-  const normalized = normalizeKuwoUrl(targetUrl);
-  if (!normalized) {
-    return new Response("Invalid target", { status: 400 });
+async function proxyUniversalTarget(targetUrl: string, request: Request): Promise<Response> {
+  let parsed: URL;
+  try {
+    parsed = new URL(targetUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return new Response("Invalid protocol", { status: 400 });
+    }
+  } catch {
+    return new Response("Invalid target URL", { status: 400 });
   }
 
   const init: RequestInit = {
     method: request.method,
     headers: {
-      "User-Agent": request.headers.get("User-Agent") ?? "Mozilla/5.0",
-      "Referer": "https://www.kuwo.cn/",
+      "User-Agent": request.headers.get("User-Agent") ?? "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      "Accept": request.headers.get("Accept") ?? "*/*",
     },
   };
+
+  // 针对酷我等音源特殊处理防盗链 Referer
+  if (isAllowedKuwoHost(parsed.hostname)) {
+    (init.headers as Record<string, string>)["Referer"] = "https://www.kuwo.cn/";
+    parsed.protocol = "http:";
+  } else if (parsed.hostname.includes("qq.com")) {
+    (init.headers as Record<string, string>)["Referer"] = "https://y.qq.com/";
+  } else if (parsed.hostname.includes("163.com")) {
+    (init.headers as Record<string, string>)["Referer"] = "https://music.163.com/";
+  }
 
   const rangeHeader = request.headers.get("Range");
   if (rangeHeader) {
     (init.headers as Record<string, string>)["Range"] = rangeHeader;
   }
 
-  const upstream = await fetch(normalized.toString(), init);
-  const headers = createCorsHeaders(upstream.headers);
-  if (!headers.has("Cache-Control")) {
-    headers.set("Cache-Control", "public, max-age=3600");
+  // 传递 body（如果是 POST/PUT 等）
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    try {
+      const bodyBlob = await request.blob();
+      if (bodyBlob && bodyBlob.size > 0) {
+        init.body = bodyBlob;
+      }
+      const cType = request.headers.get("Content-Type");
+      if (cType) {
+        (init.headers as Record<string, string>)["Content-Type"] = cType;
+      }
+    } catch {}
   }
 
-  return new Response(upstream.body, {
-    status: upstream.status,
-    statusText: upstream.statusText,
-    headers,
-  });
+  try {
+    const upstream = await fetch(parsed.toString(), init);
+    const headers = createCorsHeaders(upstream.headers);
+    if (!headers.has("Cache-Control")) {
+      headers.set("Cache-Control", "public, max-age=3600");
+    }
+
+    return new Response(upstream.body, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers,
+    });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: "Proxy target failed", message: err?.message || String(err) }), {
+      status: 502,
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+    });
+  }
 }
 
 function decodeBase64Utf8(b64: string): string {
@@ -513,7 +549,7 @@ export async function onRequest({ request, waitUntil, env }: { request: Request;
   const target = url.searchParams.get("target");
 
   if (target) {
-    return proxyKuwoAudio(target, request);
+    return proxyUniversalTarget(target, request);
   }
 
   return proxyApiRequest(url, request, waitUntil, apiBaseUrl);

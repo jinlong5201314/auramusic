@@ -127,6 +127,105 @@
     margin-bottom: 0;
 }
 
+/* 洛雪音源订阅控件样式 */
+.lx-source-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.lx-source-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.lx-source-input {
+    flex: 1;
+    min-width: 0;
+    height: 38px;
+    padding: 0 12px;
+    font-size: 13px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: rgba(0, 0, 0, 0.03);
+    color: inherit;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.dark-mode .lx-source-input {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.lx-source-input:focus {
+    border-color: #0071e3;
+    background: #fff;
+}
+
+.dark-mode .lx-source-input:focus {
+    border-color: #2997ff;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.lx-source-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+    height: 38px;
+    padding: 0 14px;
+}
+
+.lx-source-status-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(0, 113, 227, 0.06);
+    border: 1px solid rgba(0, 113, 227, 0.18);
+}
+
+.dark-mode .lx-source-status-box {
+    background: rgba(41, 151, 255, 0.08);
+    border-color: rgba(41, 151, 255, 0.22);
+}
+
+.lx-source-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.lx-badge {
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #34c759;
+    color: #fff;
+}
+
+.lx-name {
+    font-weight: 600;
+}
+
+.lx-ver {
+    color: #86868b;
+    font-size: 12px;
+}
+
+.lx-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+}
+
 .settings-section h3 {
     margin: 0 0 6px 0;
     font-size: 15px;

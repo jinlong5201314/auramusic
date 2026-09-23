@@ -7,6 +7,7 @@ import { safeSetLocalStorage, preferHttpsUrl, buildAudioProxyUrl } from "./stora
 import { showNotification } from "../features/settings.js";
 import { getSongKey } from "../features/playlist.js";
 import { ensureFavoriteSongsArray } from "../features/favorites.js";
+import { lxPluginEngine } from "./source-plugin.js";
 
 export const playModeTexts = {
     "list": "列表循环",
@@ -310,44 +311,61 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
 
         // 2. 未命中或重试时，发起实际网络请求
         if (!originalAudioUrl) {
-            // 对多源曲目（QQ/酷我/酷狗/咪咕等），尝试跨源丰富信息，并保留歌曲原始名称以供全网兜底
-            const nonNeteaseSources = ['qq', 'kuwo', 'kugou', 'tx', 'kw', 'kg', 'mg'];
-            const needsCrossMatch = nonNeteaseSources.includes(song.source) || nonNeteaseSources.includes(song.platform);
-            if (needsCrossMatch && !song._matchedNetease) {
+            // 2.0 优先尝试激活的洛雪自定义音源订阅（若已配置且开启）
+            if (lxPluginEngine && lxPluginEngine.isEnabled) {
                 try {
-                    log(`[音源增强] 正在为【${song.source_name || song.platform || song.source}】曲目《${song.name}》预检索最佳音频流...`);
-                    const queryText = `${song.name} ${song.artist}`.trim();
-                    const matched = await API.search(queryText, 'wy', 3);
-                    if (Array.isArray(matched) && matched.length > 0) {
-                        const best = matched[0];
-                        song.lyric_id = best.lyric_id || best.id;
-                        if (!song.pic && best.pic) song.pic = best.pic;
-                        song.pic_id = best.pic_id || best.id;
-                        song._matchedNetease = true;
+                    log(`[自定义音源] 正在尝试通过订阅插件解析: 《${song.name}》...`);
+                    const customUrl = await lxPluginEngine.resolveAudioUrl(song, quality);
+                    if (customUrl) {
+                        originalAudioUrl = customUrl;
+                        log(`[自定义音源] 解析成功，优先使用插件音轨`);
                     }
-                } catch (matchErr) {
-                    console.warn('[音源增强] 跨源检索异常:', matchErr);
+                } catch (lxErr) {
+                    console.warn('[自定义音源] 插件调度异常:', lxErr);
                 }
             }
 
-            let audioUrl = API.getSongUrl(song, quality);
-            if (isRetry) {
-                audioUrl += '&nocache=true';
-                log(`[音频重试] 正在通过非缓存链路重试请求...`);
-            }
-            log(`[音频解析] 请求接口: ${audioUrl}`);
+            // 2.1 若自定义音源未开启或解析未命中，进入 Solara 原生多源直连与全网兜底
+            if (!originalAudioUrl) {
+                const nonNeteaseSources = ['qq', 'kuwo', 'kugou', 'tx', 'kw', 'kg', 'mg'];
+                const needsCrossMatch = nonNeteaseSources.includes(song.source) || nonNeteaseSources.includes(song.platform);
+                if (needsCrossMatch && !song._matchedNetease) {
+                    try {
+                        log(`[音源增强] 正在为【${song.source_name || song.platform || song.source}】曲目《${song.name}》预检索最佳音频流...`);
+                        const queryText = `${song.name} ${song.artist}`.trim();
+                        const matched = await API.search(queryText, 'wy', 3);
+                        if (Array.isArray(matched) && matched.length > 0) {
+                            const best = matched[0];
+                            song.lyric_id = best.lyric_id || best.id;
+                            if (!song.pic && best.pic) song.pic = best.pic;
+                            song.pic_id = best.pic_id || best.id;
+                            song._matchedNetease = true;
+                        }
+                    } catch (matchErr) {
+                        console.warn('[音源增强] 跨源检索异常:', matchErr);
+                    }
+                }
 
-            const audioData = await API.fetchJson(audioUrl);
-            if (myToken !== currentPlaybackToken) {
-                return;
+                let audioUrl = API.getSongUrl(song, quality);
+                if (isRetry) {
+                    audioUrl += '&nocache=true';
+                    log(`[音频重试] 正在通过非缓存链路重试请求...`);
+                }
+                log(`[音频解析] 请求接口: ${audioUrl}`);
+
+                const audioData = await API.fetchJson(audioUrl);
+                if (myToken !== currentPlaybackToken) {
+                    return;
+                }
+
+                if (!audioData || !audioData.url) {
+                    const errMsg = audioData?.message || '该曲目受版权限制或暂无可用完整音轨';
+                    throw new Error(errMsg);
+                }
+
+                originalAudioUrl = audioData.url;
             }
 
-            if (!audioData || !audioData.url) {
-                const errMsg = audioData?.message || '该曲目受版权限制或暂无可用完整音轨';
-                throw new Error(errMsg);
-            }
-
-            originalAudioUrl = audioData.url;
             // 存入短期缓存（15分钟有效）
             audioUrlMemoryCache.set(cacheKey, {
                 url: originalAudioUrl,

@@ -90,3 +90,20 @@ body.mobile-view.dark-mode .settings-content {
     border-color: rgba(255, 255, 255, 0.1);
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
 }
+
+/* 移动端音源订阅适配 */
+body.mobile-view .lx-source-input-row {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+body.mobile-view .lx-source-btn {
+    width: 100%;
+    justify-content: center;
+}
+
+body.mobile-view .lx-source-status-box {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
