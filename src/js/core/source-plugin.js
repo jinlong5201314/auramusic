@@ -435,20 +435,21 @@ class LxMusicPluginEngine {
             }
         }
 
-        // 验证 URL 是否返回有效音频（过滤返回报错 JSON 如 201 error 或非音频网页）
+        // 验证与预处理 URL（自动升级安全协议，过滤失效报错接口）
         const isAudioUrlValid = async (url) => {
             if (!url || typeof url !== "string" || !url.startsWith("http")) return false;
-            // 若为海棠网等已知失效的 JSON 报错接口，直接识别为无效
-            if (url.includes(".php?") && (url.includes("haitangw") || url.includes("nxinxz") || url.includes("175.27.166.236"))) {
-                try {
-                    const checkResp = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(2000) });
-                    const ct = (checkResp.headers.get("content-type") || "").toLowerCase();
-                    if (ct.includes("json") || ct.includes("html") || ct.includes("text")) return false;
-                } catch {
-                    return false;
+            let targetUrl = url;
+            // 若为纯 http 且页面在 https 环境下，对于支持 https 的主流媒体 CDN 自动升级，防止浏览器 Mixed Content 阻断
+            if (typeof window !== "undefined" && window.location.protocol === "https:" && targetUrl.startsWith("http://")) {
+                if (targetUrl.includes("haitangw.net") || targetUrl.includes("kuwo.cn") || targetUrl.includes("kugou.com") || targetUrl.includes("126.net") || targetUrl.includes("qq.com")) {
+                    targetUrl = targetUrl.replace(/^http:\/\//i, "https://");
                 }
             }
-            return true;
+            // 若为已知返回纯报错 JSON 且无法播放的失效 php 接口（如已下线的 nxinxz 或 175.27.166.236）
+            if (targetUrl.includes(".php?") && (targetUrl.includes("nxinxz") || targetUrl.includes("175.27.166.236"))) {
+                return false;
+            }
+            return targetUrl;
         };
 
         // 构造候选音源列表：当前激活源优先，其余已添加源作为自动容灾备用源
@@ -504,13 +505,14 @@ class LxMusicPluginEngine {
                 }));
 
                 const resultUrl = await Promise.race([execPromise, timeoutPromise]);
-                if (await isAudioUrlValid(resultUrl)) {
-                    console.log(`[LX Sandbox] 音源【${currentSrc.name}】解析成功: ${resultUrl.slice(0, 60)}...`);
+                const validUrl = await isAudioUrlValid(resultUrl);
+                if (validUrl) {
+                    console.log(`[LX Sandbox] 音源【${currentSrc.name}】解析成功: ${validUrl.slice(0, 60)}...`);
                     this.lastResolvedSourceName = srcDisplayName;
                     delete currentSrc._failCooldown;
                     // 恢复原本选中的默认源状态标识
                     if (isFallbackSrc && originalActiveId) this.activeSourceId = originalActiveId;
-                    return resultUrl;
+                    return validUrl;
                 }
 
                 // 若当前来源解析未出有效音频流，尝试在网易云平台跨源解析（通常有完整高品质音轨）
@@ -529,11 +531,12 @@ class LxMusicPluginEngine {
                             }
                         }));
                         const crossUrl = await Promise.race([crossPromise, new Promise((_, reject) => setTimeout(() => reject(new Error("跨源超时")), 2500))]);
-                        if (await isAudioUrlValid(crossUrl)) {
-                            console.log(`[LX Sandbox] 音源【${currentSrc.name}】跨源至【wy】解析成功: ${crossUrl.slice(0, 60)}...`);
+                        const validCrossUrl = await isAudioUrlValid(crossUrl);
+                        if (validCrossUrl) {
+                            console.log(`[LX Sandbox] 音源【${currentSrc.name}】跨源至【wy】解析成功: ${validCrossUrl.slice(0, 60)}...`);
                             this.lastResolvedSourceName = srcDisplayName;
                             if (isFallbackSrc && originalActiveId) this.activeSourceId = originalActiveId;
-                            return crossUrl;
+                            return validCrossUrl;
                         }
                     } catch {}
                 }

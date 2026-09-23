@@ -273,7 +273,8 @@ export const API = {
         const normSource = sourceMap[rawSource] || rawSource;
         const songName = encodeURIComponent(song.name || "");
         const artistName = encodeURIComponent(Array.isArray(song.artist) ? song.artist.join(" ") : (song.artist || ""));
-        return `${API.baseUrl}?types=url&id=${song.url_id || song.id}&source=${normSource}&name=${songName}&artist=${artistName}&br=${quality}&s=${signature}`;
+        const durationParam = song.duration ? `&duration=${encodeURIComponent(song.duration)}` : "";
+        return `${API.baseUrl}?types=url&id=${song.url_id || song.id}&source=${normSource}&name=${songName}&artist=${artistName}&br=${quality}${durationParam}&s=${signature}`;
     },
 
     getLyric: (song) => {

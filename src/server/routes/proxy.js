@@ -287,7 +287,20 @@ async function checkAudioUrlValid(audioUrl, minSizeBytes = 1.8 * 1024 * 1024) {
   }
 }
 
-async function findPlayableNeteaseTrack(name, artist, apiBaseUrl) {
+function isArtistMatch(targetArtist, candidateArtist) {
+  if (!targetArtist) return true;
+  if (!candidateArtist) return false;
+  const cleanTarget = targetArtist.toLowerCase().replace(/[\s\/\,\&、]/g, '');
+  const cleanCand = candidateArtist.toLowerCase().replace(/[\s\/\,\&、]/g, '');
+  const targetTokens = targetArtist.split(/[\s\/\,\&、]+/).map(t => t.trim().toLowerCase()).filter(Boolean);
+  const candTokens = candidateArtist.split(/[\s\/\,\&、]+/).map(t => t.trim().toLowerCase()).filter(Boolean);
+  for (const t of targetTokens) {
+    if (candTokens.some(c => c.includes(t) || t.includes(c))) return true;
+  }
+  return cleanTarget.includes(cleanCand) || cleanCand.includes(cleanTarget);
+}
+
+async function findPlayableNeteaseTrack(name, artist, targetDuration = 0, apiBaseUrl = API_BASE_URL) {
   if (!name) return null;
   try {
     const cleanName = name.replace(/\([^)]*\)|（[^）]*）/g, '').trim();
@@ -307,6 +320,33 @@ async function findPlayableNeteaseTrack(name, artist, apiBaseUrl) {
       for (const song of songs) {
         const sid = song.id;
         if (!sid) continue;
+
+        // 1. 严格比对歌手名：若提供了目标歌手，候选歌曲的歌手必须匹配，绝不接受“全网找歌君”等无关翻唱
+        if (artist) {
+          const songArtists = Array.isArray(song.artist) ? song.artist.join(' ') : String(song.artist || '');
+          if (!isArtistMatch(artist, songArtists)) {
+            console.log(`[Audio Fallback Node] 跳过歌手不匹配曲目: 《${song.name}》- ${songArtists} (目标: ${artist})`);
+            continue;
+          }
+        }
+
+        // 2. 严格比对歌曲时长：若原曲时长已知（如 247 秒），容差不能超过 ±25 秒，杜绝 126 秒的减半缩水翻唱
+        if (targetDuration > 0) {
+          try {
+            const detailUrl = `https://music.163.com/api/song/detail?ids=[${sid}]`;
+            const dResp = await fetch(detailUrl, { headers: { Referer: 'https://music.163.com', 'User-Agent': 'Mozilla/5.0' } });
+            if (dResp.ok) {
+              const dData = await dResp.json();
+              const candDurationMs = dData?.songs?.[0]?.duration || dData?.songs?.[0]?.dt || 0;
+              const candDurationSec = Math.floor(candDurationMs / 1000);
+              if (candDurationSec > 0 && Math.abs(candDurationSec - targetDuration) > 25) {
+                console.log(`[Audio Fallback Node] 跳过时长不匹配曲目: 《${song.name}》${candDurationSec}s (目标: ${targetDuration}s)`);
+                continue;
+              }
+            }
+          } catch {}
+        }
+
         const pUrl = `${apiBaseUrl}?types=url&source=netease&id=${sid}&br=320`;
         const pResp = await fetch(pUrl, { headers: { 'User-Agent': 'Meting/1.5.0' } });
         if (!pResp.ok) continue;
@@ -320,6 +360,51 @@ async function findPlayableNeteaseTrack(name, artist, apiBaseUrl) {
     }
   } catch (err) {
     console.warn('[Playable Netease Track Fallback Node] Error:', err);
+  }
+  return null;
+}
+
+/** 反查酷狗官方高品质完整音频（带严格歌手比对与时长校验） */
+async function fetchKugouDirectFallback(name, artist, targetDuration = 0) {
+  try {
+    const cleanName = name.replace(/\([^)]*\)|（[^）]*）/g, '').trim();
+    const kw = `${cleanName} ${artist}`.trim();
+    const searchUrl = `http://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=${encodeURIComponent(kw)}&page=1&pagesize=6&showtype=1`;
+    const sResp = await fetch(searchUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (iPhone)' } });
+    if (!sResp.ok) return null;
+    const sData = await sResp.json();
+    const list = sData?.data?.info || [];
+    for (const item of list) {
+      if (artist && !isArtistMatch(artist, item.singername)) continue;
+      if (targetDuration > 0 && Math.abs(item.duration - targetDuration) > 30) continue;
+      const hash = item['320hash'] || item.sqhash || item.hash;
+      if (!hash) continue;
+      const playUrl = `http://m.kugou.com/app/i/getSongInfo.php?cmd=playInfo&hash=${hash}`;
+      const pResp = await fetch(playUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (iPhone)' } });
+      if (!pResp.ok) continue;
+      const pData = await pResp.json();
+      if (pData?.url && pData.fileSize > 2000000) {
+        return { url: pData.url, br: 320 };
+      }
+    }
+  } catch (err) {
+    console.warn('[Kugou Direct Fallback Node] Error:', err);
+  }
+  return null;
+}
+
+/** 直连 QQ 音乐官方高品质原声音频解析 */
+async function fetchTencentDirectUrl(id) {
+  if (!id) return null;
+  try {
+    const url = `https://yinyue.haitangw.net/qq/qq_kw.php?type=mp3&id=${encodeURIComponent(id)}&level=exhigh`;
+    const resp = await fetch(url, { redirect: 'manual' });
+    if (resp.status === 301 || resp.status === 302) {
+      const loc = resp.headers.get('location');
+      if (loc && loc.startsWith('http')) return loc;
+    }
+  } catch (err) {
+    console.warn('[Tencent Direct URL Node] Error:', err);
   }
   return null;
 }
@@ -364,8 +449,25 @@ async function proxyApiRequest(reqUrl, req, res) {
   const id = parsedReq.searchParams.get('id') || '';
   const name = parsedReq.searchParams.get('name') || '';
   const artist = parsedReq.searchParams.get('artist') || '';
+  const durationStr = parsedReq.searchParams.get('duration') || '';
+  const targetDuration = parseFloat(durationStr) || 0;
 
-  // 1. 如果请求类型为音频 url 且为酷我源，先尝试酷我官方抗反爬直链接口
+  // 1.0 如果请求类型为音频 url 且为 QQ 音乐 (tencent/tx)，优先直连官方高品质原声音频解析
+  if (types === 'url' && (source === 'tencent' || source === 'tx')) {
+    try {
+      const directTxUrl = await fetchTencentDirectUrl(id);
+      if (directTxUrl && (await checkAudioUrlValid(directTxUrl, 2.2 * 1024 * 1024))) {
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 'public, max-age=1800');
+        return res.json({ url: directTxUrl, br: 320, size: 0, from: 'tencent-direct' });
+      }
+    } catch (txErr) {
+      console.warn('[Tencent URL Direct Node] Failed, fallback to search:', txErr);
+    }
+  }
+
+  // 1.1 如果请求类型为音频 url 且为酷我源，先尝试酷我官方抗反爬直链接口
   if (types === 'url' && (source === 'kuwo' || source === 'kw')) {
     try {
       const playUrl = `http://antiserver.kuwo.cn/anti.s?type=convert_url&rid=${id}&format=mp3&response=url`;
@@ -470,14 +572,14 @@ async function proxyApiRequest(reqUrl, req, res) {
       if (query) {
         console.log(`[Audio Fallback Node] 曲目《${query}》无有效完整直链，触发全网智能增强解析...`);
         
-        // 尝试 1: 酷我全网检索（若非版权语音）
-        const fallbackAudioUrl = await fetchKuwoDirectUrl(query);
-        if (fallbackAudioUrl) {
+        // 尝试 1: 酷狗官方高品质完整音频反查（严格歌手比对 + 时长校验）
+        const kugouTrack = await fetchKugouDirectFallback(name, artist, targetDuration);
+        if (kugouTrack && kugouTrack.url) {
           const enhancedBody = JSON.stringify({
-            url: fallbackAudioUrl,
-            br: 320,
+            url: kugouTrack.url,
+            br: kugouTrack.br || 320,
             size: 0,
-            from: 'kuwo-enhanced',
+            from: 'kugou-direct-fallback',
           });
           res.setHeader('Content-Type', 'application/json; charset=utf-8');
           res.setHeader('Access-Control-Allow-Origin', '*');
@@ -485,14 +587,29 @@ async function proxyApiRequest(reqUrl, req, res) {
           return res.send(enhancedBody);
         }
 
-        // 尝试 2: 网易云全网反查可用同名高品质音轨
-        const neteaseTrack = await findPlayableNeteaseTrack(name, artist, API_BASE_URL);
+        // 尝试 2: 网易云全网反查可用同名高品质音轨（严格比对歌手与时长，严禁 UGC 翻唱）
+        const neteaseTrack = await findPlayableNeteaseTrack(name, artist, targetDuration, API_BASE_URL);
         if (neteaseTrack && neteaseTrack.url) {
           const enhancedBody = JSON.stringify({
             url: neteaseTrack.url,
             br: neteaseTrack.br || 320,
             size: 0,
             from: 'netease-fallback',
+          });
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Cache-Control', 'public, max-age=1800');
+          return res.send(enhancedBody);
+        }
+
+        // 尝试 3: 酷我全网检索（若非版权语音）
+        const fallbackAudioUrl = await fetchKuwoDirectUrl(query);
+        if (fallbackAudioUrl) {
+          const enhancedBody = JSON.stringify({
+            url: fallbackAudioUrl,
+            br: 320,
+            size: 0,
+            from: 'kuwo-enhanced',
           });
           res.setHeader('Content-Type', 'application/json; charset=utf-8');
           res.setHeader('Access-Control-Allow-Origin', '*');
