@@ -83,58 +83,71 @@
 .controls button#loadOnlineBtn,
 .controls button#headerSquareBtn,
 .controls button#headerSettingsBtn,
-.controls button.radar-btn {
-    width: auto;
-    border-radius: 999px;
-    padding: 0 15px;
-    gap: 7px;
-    font-size: 13px;
-    font-weight: 600;
-    height: 36px;
-    background: var(--component-bg);
-    color: var(--text-color);
-    border: 1px solid var(--apple-glass-border);
-    border-top: 1px solid var(--apple-glass-border-top);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    position: relative;
-    overflow: visible;
-    backdrop-filter: var(--apple-glass-blur);
-    -webkit-backdrop-filter: var(--apple-glass-blur);
-    transition: all 0.22s var(--spring-smooth);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    flex-shrink: 0;
-    white-space: nowrap;
+.controls button.radar-btn,
+.controls button.settings-trigger-btn,
+.controls button.square-trigger-btn {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    border-radius: 999px !important;
+    padding: 0 16px !important;
+    gap: 7px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    background: var(--component-bg) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--apple-glass-border) !important;
+    border-top: 1px solid var(--apple-glass-border-top) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+    position: relative !important;
+    overflow: visible !important;
+    backdrop-filter: var(--apple-glass-blur) !important;
+    -webkit-backdrop-filter: var(--apple-glass-blur) !important;
+    transition: all 0.22s var(--spring-smooth) !important;
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    writing-mode: horizontal-tb !important;
 }
 
 .controls button#loadOnlineBtn:hover,
 .controls button#headerSquareBtn:hover,
 .controls button#headerSettingsBtn:hover,
-.controls button.radar-btn:hover {
+.controls button.radar-btn:hover,
+.controls button.settings-trigger-btn:hover,
+.controls button.square-trigger-btn:hover {
     background: var(--primary-color) !important;
     color: #ffffff !important;
     border-color: var(--primary-color) !important;
-    box-shadow: 0 8px 22px var(--palette-glow);
-    transform: translateY(-1px);
+    box-shadow: 0 8px 22px var(--palette-glow) !important;
+    transform: translateY(-1px) !important;
 }
 
 .controls button#headerSquareBtn:hover svg,
 .controls button#headerSquareBtn:hover .apple-svg-icon,
 .controls button#headerSettingsBtn:hover svg,
 .controls button#headerSettingsBtn:hover .apple-svg-icon,
-.controls button.radar-btn:hover svg {
+.controls button.radar-btn:hover svg,
+.controls button.settings-trigger-btn:hover svg,
+.controls button.square-trigger-btn:hover svg {
     color: #ffffff !important;
 }
 
 .dark-mode .controls button#loadOnlineBtn,
 .dark-mode .controls button#headerSquareBtn,
 .dark-mode .controls button#headerSettingsBtn,
-.dark-mode .controls button.radar-btn {
-    background: rgba(255, 255, 255, 0.08);
-    color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.14);
+.dark-mode .controls button.radar-btn,
+.dark-mode .controls button.settings-trigger-btn,
+.dark-mode .controls button.square-trigger-btn {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
 }
 
 .radar-ping-ring {
@@ -158,12 +171,29 @@
 .controls button#loadOnlineBtn .btn-text,
 .controls button#headerSquareBtn .btn-text,
 .controls button#headerSettingsBtn .btn-text,
-.controls button.radar-btn .btn-text {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    line-height: 1;
-    white-space: nowrap;
+.controls button.radar-btn .btn-text,
+.controls button.settings-trigger-btn .btn-text,
+.controls button.square-trigger-btn .btn-text {
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 6px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    writing-mode: horizontal-tb !important;
+    word-break: keep-all !important;
+}
+
+.controls button#loadOnlineBtn .btn-text span,
+.controls button#headerSquareBtn .btn-text span,
+.controls button#headerSettingsBtn .btn-text span,
+.controls button.radar-btn .btn-text span,
+.controls button.settings-trigger-btn .btn-text span,
+.controls button.square-trigger-btn .btn-text span {
+    display: inline-block !important;
+    white-space: nowrap !important;
+    writing-mode: horizontal-tb !important;
+    word-break: keep-all !important;
 }
 
 .controls button#headerSquareBtn .apple-svg-icon,
