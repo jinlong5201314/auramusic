@@ -463,8 +463,8 @@ class LxMusicPluginEngine {
                     targetUrl = targetUrl.replace(/^http:\/\//i, "https://");
                 }
             }
-            // 若为已知返回纯报错 JSON 且无法播放的失效 php 接口（如已下线的 nxinxz 或 175.27.166.236）
-            if (targetUrl.includes(".php?") && (targetUrl.includes("nxinxz") || targetUrl.includes("175.27.166.236"))) {
+            // 若为已知返回纯报错 JSON 且无法播放的失效 php 接口（如已下线的 nxinxz、175.27.166.236，或返回 {"code":201,"msg":"error"} 的 haitangw）
+            if (targetUrl.includes(".php?") && (targetUrl.includes("nxinxz") || targetUrl.includes("175.27.166.236") || targetUrl.includes("haitangw.cc"))) {
                 return false;
             }
             return targetUrl;
@@ -533,9 +533,55 @@ class LxMusicPluginEngine {
                     return validUrl;
                 }
 
-                // 若当前来源解析未出有效音频流，尝试在网易云平台跨源解析（通常有完整高品质音轨）
+                // 1. 若当前来源解析未出有效音频流，首先尝试在 QQ 音乐 (tx) 平台进行同名高品质跨源解析（覆盖企鹅独家热门版权）
+                if (lxSource !== "tx" && song.name) {
+                    console.log(`[LX Sandbox] 音源【${currentSrc.name}】在【${lxSource}】未出有效音频，尝试同名智能跨源至【tx】...`);
+                    try {
+                        let txSongMid = "";
+                        // 秒查 QQ 音乐接口获取对应 songmid
+                        try {
+                            const txSearchUrl = `/api/search?keyword=${encodeURIComponent(song.name + " " + (song.artist || ""))}&page=1&limit=3`;
+                            const txResp = await fetch(txSearchUrl, { signal: AbortSignal.timeout(1800) });
+                            if (txResp.ok) {
+                                const txList = await txResp.json();
+                                const exactMatch = txList.find(it => it.source === "tx" && it.id?.startsWith("00")) || txList[0];
+                                if (exactMatch && exactMatch.id?.startsWith("00")) {
+                                    txSongMid = exactMatch.id;
+                                }
+                            }
+                        } catch {}
+
+                        if (txSongMid) {
+                            const txPromise = Promise.resolve().then(() => this.registeredHandler({
+                                action: "musicUrl",
+                                source: "tx",
+                                info: {
+                                    type: lxQuality,
+                                    musicInfo: {
+                                        id: txSongMid,
+                                        songmid: txSongMid,
+                                        name: song.name,
+                                        singer: song.artist
+                                    }
+                                }
+                            }));
+                            const crossTxUrl = await Promise.race([txPromise, new Promise((_, reject) => setTimeout(() => reject(new Error("tx跨源超时")), 2500))]);
+                            const validCrossTx = await isAudioUrlValid(crossTxUrl);
+                            if (validCrossTx) {
+                                console.log(`[LX Sandbox] 音源【${currentSrc.name}】跨源至【tx】解析成功: ${validCrossTx.slice(0, 60)}...`);
+                                this.lastResolvedSourceName = `${srcDisplayName} (QQ跨源)`;
+                                if (isFallbackSrc && originalActiveId) this.activeSourceId = originalActiveId;
+                                return validCrossTx;
+                            }
+                        }
+                    } catch (txErr) {
+                        console.warn("[LX Sandbox] 跨源 tx 尝试未命中:", txErr.message);
+                    }
+                }
+
+                // 2. 尝试在网易云平台跨源解析（通常有完整高品质音轨）
                 if (lxSource !== "wy" && song.name) {
-                    console.log(`[LX Sandbox] 音源【${currentSrc.name}】在【${lxSource}】未出链，尝试同名跨源至【wy】...`);
+                    console.log(`[LX Sandbox] 音源【${currentSrc.name}】尝试同名跨源至【wy】...`);
                     try {
                         const crossPromise = Promise.resolve().then(() => this.registeredHandler({
                             action: "musicUrl",
@@ -552,7 +598,7 @@ class LxMusicPluginEngine {
                         const validCrossUrl = await isAudioUrlValid(crossUrl);
                         if (validCrossUrl) {
                             console.log(`[LX Sandbox] 音源【${currentSrc.name}】跨源至【wy】解析成功: ${validCrossUrl.slice(0, 60)}...`);
-                            this.lastResolvedSourceName = srcDisplayName;
+                            this.lastResolvedSourceName = `${srcDisplayName} (网易跨源)`;
                             if (isFallbackSrc && originalActiveId) this.activeSourceId = originalActiveId;
                             return validCrossUrl;
                         }

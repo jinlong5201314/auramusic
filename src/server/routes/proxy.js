@@ -517,6 +517,17 @@ async function proxyApiRequest(reqUrl, req, res) {
     }
   }
 
+  // 1.3 如果请求类型为封面 pic，且为非网易源，拦截 400 报错并安全兜底
+  if (types === 'pic') {
+    const unsupportedPicSources = ['kugou', 'kg', 'kuwo', 'kw', 'migu', 'mg', 'tencent', 'tx'];
+    if (unsupportedPicSources.includes(source)) {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.json({ url: '' });
+    }
+  }
+
   // ── Cache HIT 检查 ────────────────────────────────────────────────────────
   if (!bypassCache) {
     const cached = cache.get(cacheKey);

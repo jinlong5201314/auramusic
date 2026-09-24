@@ -585,6 +585,17 @@ async function proxyApiRequest(url: URL, request: Request, waitUntil?: (promise:
     }
   }
 
+  // 1.3 如果请求类型为封面 pic，且为非网易源，拦截 400 报错并安全兜底
+  if (types === "pic") {
+    const unsupportedPicSources = ["kugou", "kg", "kuwo", "kw", "migu", "mg", "tencent", "tx"];
+    if (unsupportedPicSources.includes(source)) {
+      return new Response(JSON.stringify({ url: "" }), {
+        status: 200,
+        headers: createCorsHeaders(new Headers({ "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=3600" })),
+      });
+    }
+  }
+
   // 2. 向上游发起标准转发
   const apiUrl = new URL(apiBaseUrl);
   url.searchParams.forEach((value, key) => {
