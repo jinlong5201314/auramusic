@@ -79,13 +79,15 @@
     margin-left: 2px;
 }
 
-/* 探索雷达与歌单广场按钮 (Pulse Capsule) */
+/* 探索雷达与歌单广场与设置胶囊按钮 (Pulse Capsule) */
 .controls button#loadOnlineBtn,
-.controls button#headerSquareBtn {
+.controls button#headerSquareBtn,
+.controls button#headerSettingsBtn,
+.controls button.radar-btn {
     width: auto;
     border-radius: 999px;
-    padding: 0 16px;
-    gap: 8px;
+    padding: 0 15px;
+    gap: 7px;
     font-size: 13px;
     font-weight: 600;
     height: 36px;
@@ -104,10 +106,13 @@
     justify-content: center;
     cursor: pointer;
     flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .controls button#loadOnlineBtn:hover,
-.controls button#headerSquareBtn:hover {
+.controls button#headerSquareBtn:hover,
+.controls button#headerSettingsBtn:hover,
+.controls button.radar-btn:hover {
     background: var(--primary-color) !important;
     color: #ffffff !important;
     border-color: var(--primary-color) !important;
@@ -116,12 +121,17 @@
 }
 
 .controls button#headerSquareBtn:hover svg,
-.controls button#headerSquareBtn:hover .apple-svg-icon {
+.controls button#headerSquareBtn:hover .apple-svg-icon,
+.controls button#headerSettingsBtn:hover svg,
+.controls button#headerSettingsBtn:hover .apple-svg-icon,
+.controls button.radar-btn:hover svg {
     color: #ffffff !important;
 }
 
 .dark-mode .controls button#loadOnlineBtn,
-.dark-mode .controls button#headerSquareBtn {
+.dark-mode .controls button#headerSquareBtn,
+.dark-mode .controls button#headerSettingsBtn,
+.dark-mode .controls button.radar-btn {
     background: rgba(255, 255, 255, 0.08);
     color: #ffffff;
     border-color: rgba(255, 255, 255, 0.14);
@@ -146,14 +156,19 @@
 }
 
 .controls button#loadOnlineBtn .btn-text,
-.controls button#headerSquareBtn .btn-text {
+.controls button#headerSquareBtn .btn-text,
+.controls button#headerSettingsBtn .btn-text,
+.controls button.radar-btn .btn-text {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     line-height: 1;
+    white-space: nowrap;
 }
 
-.controls button#headerSquareBtn .apple-svg-icon {
+.controls button#headerSquareBtn .apple-svg-icon,
+.controls button#headerSettingsBtn .apple-svg-icon,
+.controls button.radar-btn .apple-svg-icon {
     width: 15px;
     height: 15px;
     color: var(--primary-color);
@@ -296,7 +311,9 @@ html:not(.mobile-view) .transport-controls {
 }
 
 .control-trailing #loadOnlineBtn,
-.control-trailing #headerSquareBtn {
+.control-trailing #headerSquareBtn,
+.control-trailing #headerSettingsBtn,
+.control-trailing .radar-btn {
     margin-left: 0;
     flex-shrink: 0;
 }
