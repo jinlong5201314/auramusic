@@ -257,6 +257,28 @@ class LxMusicPluginEngine {
     }
 
     /**
+     * 辅助下载脚本源码：优先直连，直连遇 CORS 阻断时自动降级走同构代理
+     */
+    async fetchScriptSource(url) {
+        try {
+            const resp = await fetch(url);
+            if (resp.ok) {
+                return await resp.text();
+            }
+        } catch (e) {
+            console.warn(`[LX Sandbox] 脚本直连下载失败 (${e.message})，转入同构网关代理下载: ${url}`);
+        }
+
+        // 降级走代理接口
+        const proxyUrl = `/proxy?target=${encodeURIComponent(url)}`;
+        const proxyResp = await fetch(proxyUrl);
+        if (!proxyResp.ok) {
+            throw new Error(`脚本下载失败: HTTP ${proxyResp.status}`);
+        }
+        return await proxyResp.text();
+    }
+
+    /**
      * 激活并执行指定 ID 的音源脚本
      */
     async activateSource(sourceId) {
@@ -273,11 +295,7 @@ class LxMusicPluginEngine {
 
         try {
             console.log(`[LX Sandbox] 正在切换并加载音源: ${target.name} (${target.url})`);
-            const resp = await fetch(target.url);
-            if (!resp.ok) {
-                throw new Error(`脚本下载失败: HTTP ${resp.status}`);
-            }
-            const code = await resp.text();
+            const code = await this.fetchScriptSource(target.url);
             this.scriptInfo = this.parseMetadata(code);
 
             // 更新已存信息以反映最新脚本属性
@@ -322,12 +340,8 @@ class LxMusicPluginEngine {
             return existing;
         }
 
-        // 预探测并下载脚本元信息
-        const resp = await fetch(url);
-        if (!resp.ok) {
-            throw new Error(`脚本下载失败: HTTP ${resp.status}`);
-        }
-        const code = await resp.text();
+        // 预探测并下载脚本源码
+        const code = await this.fetchScriptSource(url);
         const meta = this.parseMetadata(code);
 
         const newSource = {
@@ -345,8 +359,12 @@ class LxMusicPluginEngine {
         this.isEnabled = true;
 
         this.initSandbox();
-        const runner = new Function(code);
-        runner();
+        try {
+            const runner = new Function(code);
+            runner();
+        } catch (evalErr) {
+            console.warn(`[LX Sandbox] 音源脚本初始化警告 (${newSource.name}):`, evalErr.message);
+        }
 
         this.scriptInfo = meta;
         this.status = "ready";
