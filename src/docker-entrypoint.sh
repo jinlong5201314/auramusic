@@ -34,7 +34,7 @@ chmod 755 /data
 
 # ── 打印启动信息 ───────────────────────────────────────────────────────────────
 echo ""
-echo "  🌟 Solara  (Cloudflare Pages + Wrangler local dev)"
+echo "  🌟 AuraMusic  (Cloudflare Pages + Wrangler local dev)"
 echo "  ────────────────────────────────────────────────────"
 echo "  Port      : 8787"
 echo "  Data dir  : /data"

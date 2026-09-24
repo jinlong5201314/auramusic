@@ -88,6 +88,7 @@ export function createDebugLogger(state, dom) {
         }
     };
     // 注册到全局便于各底层模块直接调用
+    window.__auraDebugLog = logger;
     window.__solaraDebugLog = logger;
     return logger;
 }
@@ -100,7 +101,7 @@ export function toggleDebugMode(state, dom, debugLog = null) {
     if (dom && dom.debugInfo) {
         if (isEnabled) {
             dom.debugInfo.classList.add("show");
-            const logger = debugLog || window.__solaraDebugLog;
+            const logger = debugLog || window.__auraDebugLog || window.__solaraDebugLog;
             if (typeof logger === "function") {
                 logger(`[系统] 调试控制台已启用 (设备: ${window.__SOLARA_IS_MOBILE ? "移动端" : "桌面端"})`);
             }

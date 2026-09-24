@@ -219,4 +219,5 @@ if (state.favoriteSongs.length === 0) {
 }
 
 // 挂载到 window，保证与原有代码及调试的兼容性
+window.AuraState = state;
 window.SolaraState = state;

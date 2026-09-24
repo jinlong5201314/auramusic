@@ -537,7 +537,8 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
 }
 
 export function autoPlayNext(state, dom, callbacks = {}) {
-    if (dom.audioPlayer && dom.audioPlayer.__solaraMediaSessionHandledEnded === 'skip') {
+    if (dom.audioPlayer && (dom.audioPlayer.__auraMediaSessionHandledEnded === 'skip' || dom.audioPlayer.__solaraMediaSessionHandledEnded === 'skip')) {
+        dom.audioPlayer.__auraMediaSessionHandledEnded = false;
         dom.audioPlayer.__solaraMediaSessionHandledEnded = false;
         return;
     }

@@ -161,9 +161,9 @@ export function initMobileLyricsInteractions() {
 
         lyricsScroll.addEventListener("scroll", () => {
             // 忽略程序触发的平滑滚动
-            if (window.__solaraIsProgrammaticScrolling) return;
+            if (window.__auraIsProgrammaticScrolling || window.__solaraIsProgrammaticScrolling) return;
 
-            const state = window.SolaraState;
+            const state = window.AuraState || window.SolaraState;
             if (!state) return;
             state.userScrolledLyrics = true;
 

@@ -491,7 +491,7 @@ export function exportPlaylist(state, dom) {
     try {
         const payload = {
             version: PLAYLIST_EXPORT_VERSION,
-            type: "solara_playlist",
+            type: "auramusic_playlist",
             timestamp: new Date().toISOString(),
             songs: state.playlistSongs,
         };
@@ -499,7 +499,7 @@ export function exportPlaylist(state, dom) {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `Solara_Playlist_${new Date().toISOString().slice(0, 10)}.json`;
+        link.download = `AuraMusic_Playlist_${new Date().toISOString().slice(0, 10)}.json`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

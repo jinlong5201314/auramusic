@@ -10,11 +10,10 @@
         "高品音质": "High Quality",
         "无损音质": "Lossless",
         "歌词将在此处同步显示": "Lyrics will be displayed here synchronously",
-        "Made by Wet Dream Boy，免费API来自GD音乐台(music.gdstudio.xyz)，仅供学习交流使用，请支持正版音乐。": "Made by Wet Dream Boy. Free API from GD Music (music.gdstudio.xyz). For educational purposes only, please support official releases.",
-        "Made by Wet Dream Boy，免费API来自GD音乐台(music.gdstudio.xyz)，仅供学习交流使用，请支持正版音乐奥！": "Made by Wet Dream Boy. Free API from GD Music (music.gdstudio.xyz). For educational purposes only, please support official releases!",
+        "灵光音乐 (AuraMusic) 融合流体美学与智能多源容灾调度，歌曲数据由开源社区与公共接口驱动。仅供个人学习交流与视听体验，请支持正版音乐。": "AuraMusic integrates fluid aesthetics with smart multi-source failover. Audio powered by open source communities and public APIs. For educational purposes only, please support official releases.",
 
         // index.html
-        "探索雷达": "Explore Radar",
+        "随机音乐": "Random Music",
         "打开搜索": "Open Search",
         "切换深浅色模式": "Toggle Theme",
         "关闭搜索": "Close Search",
@@ -49,12 +48,12 @@
         "聚合所有雷达，探索新音乐": "Aggregate radars, explore new music",
 
         // login.html
-        "登录 - Solara": "Login - Solara",
+        "登录 - AuraMusic": "Login - AuraMusic",
         "访问受到保护": "Access Protected",
         "访问口令": "Access Token",
         "请输入密码": "Enter password",
         "只有输入了正确口令的成员才能继续访问内容。": "Only members with the correct token can access the content.",
-        "进入 Solara": "Enter Solara",
+        "进入 AuraMusic": "Enter AuraMusic",
         "安全状态：受保护": "Security Status: Protected",
         "密码错误，请重试": "Incorrect password, please try again",
         "登录出错，请稍后再试": "Login error, please try again later",

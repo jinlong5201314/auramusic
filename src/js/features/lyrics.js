@@ -109,11 +109,13 @@ export function scrollToCurrentLyric(element, containerOverride, dom, smooth = t
 
     if (Math.abs(container.scrollTop - finalScrollTop) > 1) {
         if (typeof window !== "undefined") {
+            window.__auraIsProgrammaticScrolling = true;
             window.__solaraIsProgrammaticScrolling = true;
-            if (window.__solaraProgrammaticTimer) {
-                clearTimeout(window.__solaraProgrammaticTimer);
+            if (window.__auraProgrammaticTimer) {
+                clearTimeout(window.__auraProgrammaticTimer);
             }
-            window.__solaraProgrammaticTimer = setTimeout(() => {
+            window.__auraProgrammaticTimer = setTimeout(() => {
+                window.__auraIsProgrammaticScrolling = false;
                 window.__solaraIsProgrammaticScrolling = false;
             }, 600);
         }

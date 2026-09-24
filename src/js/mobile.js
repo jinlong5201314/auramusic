@@ -21,9 +21,10 @@ import { bindMobileToolbar } from "./mobile/toolbar.js";
         return;
     }
 
-    const bridge = window.SolaraMobileBridge || {};
+    const bridge = window.AuraMobileBridge || window.SolaraMobileBridge || {};
     bridge.handlers = bridge.handlers || {};
     bridge.queue = Array.isArray(bridge.queue) ? bridge.queue : [];
+    window.AuraMobileBridge = bridge;
     window.SolaraMobileBridge = bridge;
 
     let initialized = false;

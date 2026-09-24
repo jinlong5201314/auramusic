@@ -1,7 +1,7 @@
 {
-  "name": "solara-standalone",
+  "name": "auramusic-standalone",
   "version": "1.0.0",
-  "description": "Solara 独立 Node.js 服务器（Docker 版，不依赖 Cloudflare/Wrangler）",
+  "description": "AuraMusic 独立 Node.js 服务器（Docker 版，同构部署）",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"

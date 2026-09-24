@@ -222,7 +222,7 @@ body.layout-compact .playlist-item-title {
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    cursor: pointer;
+    cursor: default;
     flex-shrink: 0;
     white-space: nowrap;
     transition: 
@@ -231,15 +231,35 @@ body.layout-compact .playlist-item-title {
         transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.header-logo-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 8px rgba(129, 140, 248, 0.4));
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.header-brand-wrap:hover .header-logo-icon {
+    transform: rotate(20deg) scale(1.1);
+}
+
+.aura-logo-svg {
+    width: 28px;
+    height: 28px;
+}
+
 .header-logo { 
     margin: 0; 
     font-size: 1.7em; 
-    font-weight: 700; 
+    font-weight: 750; 
     color: var(--text-color);
-    letter-spacing: -0.03em;
+    letter-spacing: -0.035em;
     user-select: none;
-    cursor: pointer;
-    background: linear-gradient(135deg, var(--text-color) 35%, var(--primary-color) 100%);
+    cursor: default;
+    background: linear-gradient(135deg, var(--text-color) 20%, #818cf8 65%, #38bdf8 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     transition: transform 0.3s var(--spring-bounce);
@@ -247,7 +267,7 @@ body.layout-compact .playlist-item-title {
 }
 
 .header-logo:hover {
-    transform: scale(1.03);
+    transform: scale(1.02);
 }
 
 .header-badge {

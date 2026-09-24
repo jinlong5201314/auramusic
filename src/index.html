@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Solara</title>
-    <meta name="apple-mobile-web-app-title" content="Solara">
+    <title>AuraMusic - 灵光音乐</title>
+    <meta name="apple-mobile-web-app-title" content="AuraMusic">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
     <link rel="shortcut icon" href="/favicon.png">
@@ -15,8 +15,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=3.2.5">
-    <script src="js/i18n.js?v=3.2.5"></script>
+    <link rel="stylesheet" href="css/style.css?v=4.0.0">
+    <script src="js/i18n.js?v=4.0.0"></script>
     <script>
         (function () {
             const ua = navigator.userAgent || "";
@@ -36,7 +36,7 @@
             document.documentElement.classList.add("mobile-view");
             const link = document.createElement("link");
             link.rel = "stylesheet";
-            link.href = "css/mobile.css?v=3.2.5";
+            link.href = "css/mobile.css?v=4.0.0";
             link.id = "mobileStylesheet";
             document.head.appendChild(link);
             let stableViewportHeight = window.innerHeight;
@@ -163,7 +163,7 @@
                     <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                 </button>
             </div>
-            <div class="mobile-toolbar__title" id="mobileToolbarTitle">Solara</div>
+            <div class="mobile-toolbar__title" id="mobileToolbarTitle">AuraMusic</div>
             <div class="mobile-toolbar__actions">
                 <button class="mobile-toolbar__button theme-toggle-button" id="mobileThemeToggle" type="button" aria-label="切换深浅色模式" title="切换深浅色模式">
                     <svg class="apple-svg-icon theme-icon theme-icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v1.5m0 16v1.5m-9.5-9.5H4m16 0h1.5m-2.6-6.4-.9.9M6.4 17.6l-.9.9m0-13 .9.9m11.3 11.3.9.9"/></svg>
@@ -176,18 +176,32 @@
         </div>
         <div class="header">
             <div class="header-center">
-                <div class="header-brand-wrap" title="双击打开设置">
-                    <h1 class="header-logo">Solara</h1>
-                    <span class="header-badge">Hi-Res Flow</span>
+                <div class="header-brand-wrap">
+                    <div class="header-logo-icon">
+                        <svg class="aura-logo-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="auraLogoGrad" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stop-color="#38bdf8"/>
+                                    <stop offset="50%" stop-color="#818cf8"/>
+                                    <stop offset="100%" stop-color="#c084fc"/>
+                                </linearGradient>
+                            </defs>
+                            <circle cx="16" cy="16" r="14" stroke="url(#auraLogoGrad)" stroke-width="2.5" stroke-dasharray="3 3"/>
+                            <path d="M9 16C11 11 13 11 15 16C17 21 19 21 21 16C22 13.5 23 13.5 24 16" stroke="url(#auraLogoGrad)" stroke-width="2.5" stroke-linecap="round"/>
+                            <circle cx="16" cy="16" r="3" fill="url(#auraLogoGrad)"/>
+                        </svg>
+                    </div>
+                    <h1 class="header-logo">AuraMusic</h1>
+                    <span class="header-badge">Fluid Sound</span>
                 </div>
-                <div class="warning">Made by Wet Dream Boy，免费API来自GD音乐台(music.gdstudio.xyz)，仅供学习交流使用，请支持正版音乐。</div>
+                <div class="warning">灵光音乐 (AuraMusic) 融合流体美学与智能多源容灾调度，歌曲数据由开源社区与公共接口驱动。仅供个人学习交流与视听体验，请支持正版音乐。</div>
             </div>
             <div class="header-actions">
                 <button id="themeToggleButton" class="theme-toggle-button" type="button" aria-label="切换深浅色模式" title="切换深浅色模式">
                     <svg class="apple-svg-icon theme-icon theme-icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v1.5m0 16v1.5m-9.5-9.5H4m16 0h1.5m-2.6-6.4-.9.9M6.4 17.6l-.9.9m0-13 .9.9m11.3 11.3.9.9"/></svg>
                     <svg class="apple-svg-icon theme-icon theme-icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4m2-2h-4"/></svg>
                 </button>
-                <button id="layoutToggleBtn" class="theme-toggle-button layout-toggle-btn" type="button" aria-label="切换播放器视图大小" title="切换播放器视图大小（双击Logo打开设置）">
+                <button id="layoutToggleBtn" class="theme-toggle-button layout-toggle-btn" type="button" aria-label="切换播放器视图大小" title="切换播放器视图大小">
                     <svg class="apple-svg-icon layout-icon layout-icon--minimize" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 10 7-7m-1 7h-6V4M3 21l7-7m-6 0h6v6"/></svg>
                     <svg class="apple-svg-icon layout-icon layout-icon--maximize" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6m0-6-7 7M3 21l7-7m-1 7H3v-6"/></svg>
                 </button>
@@ -681,13 +695,19 @@
                         <span>歌单广场</span>
                     </span>
                 </button>
-                <button id="loadOnlineBtn" class="radar-btn" title="聚合所有雷达，探索新音乐">
+                <button id="loadOnlineBtn" class="radar-btn" title="换一批随机音乐，发现好歌">
                     <span class="radar-ping-ring"></span>
                     <span class="btn-text">
                         <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 6a6 6 0 0 1 6 6"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 12 4 20"/></svg>
-                        <span>探索雷达</span>
+                        <span>随机音乐</span>
                     </span>
                     <span class="loader" style="display: none;"></span>
+                </button>
+                <button id="headerSettingsBtn" class="radar-btn settings-trigger-btn" type="button" aria-label="打开设置" title="系统偏好与自定义音源设置">
+                    <span class="btn-text">
+                        <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <span>设置</span>
+                    </span>
                 </button>
             </div>
         </div>
@@ -831,7 +851,7 @@
             </div>
             <div class="immersive-meta">
                 <h2 class="immersive-song-title" id="immersiveSongTitle">选择一首歌曲开始播放</h2>
-                <p class="immersive-song-artist" id="immersiveSongArtist">Solara Music</p>
+                <p class="immersive-song-artist" id="immersiveSongArtist">AuraMusic</p>
             </div>
             <div class="immersive-mini-controls">
                 <button class="immersive-ctrl-btn" id="immersivePrevBtn" title="上一曲">
@@ -857,7 +877,7 @@
 <!-- 调试信息容器 -->
 <div id="debugInfo" class="debug-info">
     <div class="debug-info-header" id="debugInfoHeader" title="按住拖拽移动，双击折叠/展开">
-        <span class="debug-info-title"><i class="fas fa-terminal"></i> Solara 调试台</span>
+        <span class="debug-info-title"><i class="fas fa-terminal"></i> 运行调试台</span>
         <div class="debug-info-actions">
             <button type="button" id="minimizeDebugLogBtn" class="debug-tool-btn" title="折叠/展开横条">－</button>
             <button type="button" id="clearDebugLogBtn" class="debug-tool-btn" title="清空日志">清空</button>
@@ -868,12 +888,12 @@
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script type="module" src="js/app.js?v=3.2.5"></script>
+<script type="module" src="js/app.js?v=4.0.0"></script>
     <script>
-        if (window.isMobileDevice) {
+        if (window.__SOLARA_IS_MOBILE__) {
             const mobileScript = document.createElement('script');
             mobileScript.type = 'module';
-            mobileScript.src = 'js/mobile.js?v=3.2.5';
+            mobileScript.src = 'js/mobile.js?v=4.0.0';
         document.body.appendChild(mobileScript);
     }
 </script>

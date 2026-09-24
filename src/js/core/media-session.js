@@ -52,7 +52,7 @@ export function initMediaSession(state, dom, actions = {}) {
 
     let handlersBound = false;
     let lastPositionUpdateTime = 0;
-    const MEDIA_SESSION_ENDED_FLAG = '__solaraMediaSessionHandledEnded';
+    const MEDIA_SESSION_ENDED_FLAG = '__auraMediaSessionHandledEnded';
 
     const preferLockScreenTrackControls = (() => {
         if (typeof navigator === 'undefined') {
@@ -76,7 +76,7 @@ export function initMediaSession(state, dom, actions = {}) {
         }
 
         const song = state.currentSong;
-        const title = song.name || dom.currentSongTitle?.textContent || 'Solara';
+        const title = song.name || dom.currentSongTitle?.textContent || 'AuraMusic';
         const artist = song.artist || dom.currentSongArtist?.textContent || '';
         const artworkUrl = state.currentArtworkUrl || '';
 

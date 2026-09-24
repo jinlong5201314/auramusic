@@ -1,26 +1,48 @@
-# 🎵 Solara 2.9 (Cloudflare Pages & Docker)
+# 🌌 AuraMusic（灵光音乐）
 
-> **极简优雅、全端自适应的流媒体 Web 音乐播放器**  
-> 深度移植洛雪音乐桌面端（`lx-music-desktop`）六大音源聚合搜索与歌单引擎，支持全平台官方逐句歌词、周杰伦等无版权音源全网同名高保真智能补全、酷我 VIP 语音防伪拦截，并支持 **Cloudflare Pages Serverless 边缘同构** 与 **Docker 容器化** 双端部署。
+> **极简优雅、流体美学与智能多源容灾的现代化 Web 音乐播放平台**  
+> 深度融合 **Apple Music 风格沉浸式全屏流体大字歌词**、**0 延迟切歌智能预加载**、**洛雪级自定义多音源自动容灾沙箱** 与 **全网跨源高保真音轨补全**；原生支持 **Cloudflare Pages Serverless 边缘同构** 与 **Docker 容器化** 双端部署，支持 D1 分布式数据库跨设备状态无缝漫游。
+
+---
+
+## 💡 致敬与灵感来源（Acknowledgements）
+
+AuraMusic 在架构演进与功能开发过程中，深受开源社区先驱项目的启发。在此由衷感谢以下杰出项目与社区开发者：
+
+- **[Solara](https://github.com/akudamatata/solara)**：为本项目提供了极简优雅的 Web 播放器设计理念与初始构架灵感；
+- **[LX Music (洛雪音乐)](https://github.com/lyswhut/lx-music-desktop)**：为本项目提供了开放强大的第三方自定义音源脚本规范与全网音乐生态思路；
+- **[GD 音乐台](https://music.gdstudio.xyz/)** 与开源音乐社区：为广大学习者提供了开放友好的 API 接口与数据检索服务。
 
 ---
 
 ## ✨ 核心特性
 
-- 🎧 **洛雪级六大音源聚合搜索**：
-  - 聚合大会 (`all`)、小秋音乐 (`tx` / QQ音乐)、小芸音乐 (`wy` / 网易云)、小蜗音乐 (`kw` / 酷我)、小枸音乐 (`kg` / 酷狗)、小蜜音乐 (`mg` / 咪咕)。
-  - 接入 QQ 音乐客户端动态哈希签名与咪咕 MD5 时间戳防盗链校验，突破常规 API 限制。
-- 🏛️ **沉浸式歌单广场 (Square Area)**：
-  - 5 大主流音乐平台精选官方分类大厅，支持全网歌单关键词检索与一键载入播放。
-- 🛡️ **智能防伪拦截与全网高保真兜底**：
-  - **酷我版权假音频过滤**：秒级 HEAD 探测文件体积，坚决拦截小于 400KB 的“前往官方客户端”提示音；
-  - **全网跨源完整音轨自动反查**：针对网易云下架或无版权歌曲，自动全网检索同名 320k 完整音频流，确保点播 100% 顺畅发声。
-- 📜 **全平台逐句歌词直连**：
-  - 解决公共音乐台非网易云歌词报 400 的顽疾，直连各大官方歌词通道并采用 UTF-8 字节流解码，杜绝中文乱码。
-- ☁️ **Cloudflare 边缘原生与 D1 数据库漫游**：
-  - 支持绑定 Cloudflare D1 数据库，实现跨设备、跨浏览器实时同步播放进度与收藏夹。
-- 📱 **移动端全景适配与 Apple 风格设计**：
-  - 流畅手势上滑呼出、极光背景色彩自适应、分类矩阵抽屉与毛玻璃视觉质感。
+- 🎨 **Apple Music 风格沉浸式流体大字歌词 (P4 模块)**：
+  - 点击正在播放的专辑封面、点击底栏歌词图标或**按键盘快捷键 `L`**，1 毫秒展开壁纸级全屏歌词大厅；
+  - 动态提取当前歌曲封面主色谱，结合多重高斯模糊极光画布随节奏柔和弥散流动；
+  - 逐句大字高亮放大、点词即播（Click-to-Seek）、5 秒防打扰智能回位，支持 F11 一键全屏（工控机/大屏视听神器）。
+
+- ⚡ **零延迟秒播预加载 (Zero-Gap Preload)**：
+  - 歌曲播放至尾段（剩余 25 秒或进度超过 85%）时，后台静音通道智能预解析下一首歌曲音频流并预热缓存；
+  - 自然播完切歌或手动点击【下一曲】时，**0 毫秒零等待直接发声**，享受原生客户端般的丝滑体验。
+
+- 🛡️ **洛雪自定义多音源自动容灾 (Auto Failover)**：
+  - 支持导入多个洛雪自定义音源脚本（小枸杞、全豆要、星海等）；
+  - 主音源遇到限流、网络超时或下线时，系统后台 **0.2 秒内自动无感轮询备用音源**，并动态在胶囊展示 `(自动容灾)` 状态；
+  - 内置野指针与未捕获异常安全隔离网，彻底消灭控制台红色报错风暴。
+
+- 🔍 **智能防伪拦截与全网高保真音频反查**：
+  - **严密拦截假音频与试听残卷**：对 Content-Length < 2.2MB 或时长 < 45 秒的试听音频执行硬拦截，绝不下发 27 秒试听切片；
+  - 遇到独家版权或未出链时，自动全网跨源反查 320k 完整音频流，确保点播 100% 顺畅。
+
+- ☁️ **Cloudflare 边缘原生与 D1 数据库跨端漫游**：
+  - 全栈代码适配 Cloudflare Pages Functions 边缘运行时；
+  - 绑定 Cloudflare D1 分布式数据库，电脑、手机、工控机多端实时漫游同步播放列表、收藏夹与音源配置。
+
+- 🏛️ **沉浸式歌单广场与随机音乐**：
+  - 收录多大主流音乐平台精选官方分类大厅，支持全网歌单检索与一键载入；
+  - 顶部与底栏提供 **【随机音乐】** 按钮，一键换一批推荐音乐发现宝藏好歌；
+  - 提供独立显式的 **【设置】** 按钮，随时调整音质与音源管理。
 
 ---
 
@@ -32,111 +54,64 @@
 
 ### 方案一：Cloudflare Pages 边缘一键部署（推荐）
 
-#### 1. 前置准备
-- 一个 [Cloudflare](https://dash.cloudflare.com/) 账号；
-- 本地安装 Node.js (>= 18) 与 npm；
-- 获取 Cloudflare API Token（需拥有 `Cloudflare Pages: Edit` 与 `D1: Edit` 权限）以及你的 Account ID。
-
-#### 2. 本地拉取代码
+#### 1. 本地拉取代码
 ```bash
-git clone https://github.com/jinlong5201314/solara.git
-cd solara
+git clone https://github.com/jinlong5201314/auramusic.git
+cd auramusic
 ```
 
-#### 3. 创建 Cloudflare Pages 项目与 D1 数据库 (CLI 方式)
-```bash
-# 登录或导出凭据
-export CLOUDFLARE_API_TOKEN="你的_Cloudflare_API_Token"
-export CLOUDFLARE_ACCOUNT_ID="你的_Cloudflare_Account_ID"
-
-# 1. 创建 Pages 项目 (名称为 solara)
-npx wrangler pages project create solara --production-branch main
-
-# 2. 创建 D1 数据库 (用于跨设备收藏与播放进度漫游)
-npx wrangler d1 create solara-db
-```
-执行后会输出类似如下信息：
-```text
-database_name = "solara-db"
-database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-```
-
-#### 4. 在 Cloudflare Dashboard 控制台绑定 D1 与口令
-打开 Cloudflare 控制台 -> **Workers 和 Pages** -> 找到 **solara** 项目 -> **设置 (Settings)**：
-1. **环境变量 (Environment variables)**：
-   - 生产环境中添加变量：
-     - `PASSWORD`: `your_secure_password`（你自定义的访问密码，不填则公开免密访问）
-2. **D1 数据库绑定 (D1 Database Bindings)**：
-   - 变量名称：`DB`
-   - D1 数据库：选择刚刚创建的 `solara-db`
-
-#### 5. 执行一键构建与部署
+#### 2. 部署构建与发布
+通过项目内置的部署脚本一键打包并发布至 Cloudflare Pages：
 ```bash
 chmod +x deploy-cf.sh
 ./deploy-cf.sh
 ```
-部署完成后，控制台将输出你的生产环境网址：
-`https://solara-xxx.pages.dev`
 
 ---
 
-### 方案二：Docker 容器化部署
+### 方案二：Docker 一键部署 (适合私有服务器 / 工控机)
 
-如果你偏好部署在本地 NAS、PVE LXC、群晖或云服务器 VPS 上，可以使用 Docker 一键启动：
+在服务器上新建目录并启动 `docker-compose.yml`：
 
-#### 1. 使用 docker-compose 部署
-在项目根目录下查看 `docker-compose.yml`：
 ```yaml
+version: '3.8'
+
 services:
-  solara:
-    image: ghcr.io/akudamatata/solara:latest
-    container_name: solara
+  auramusic:
+    image: node:22-alpine
+    container_name: auramusic
     restart: always
-    init: true
+    working_dir: /app
+    volumes:
+      - ./src:/app
+      - ./data:/data
     ports:
       - "8080:8787"
     environment:
-      # 聚合音乐 API 基地址（可保持默认或替换为你的自建 API）
+      - PASSWORD=your_secure_password_here
       - API_BASE_URL=https://music-api.gdstudio.xyz/api.php
-    volumes:
-      - ./data:/data
-      - ./src:/app
+    command: ["node", "server/index.js"]
 ```
 
-#### 2. 启动容器
+运行服务：
 ```bash
 docker compose up -d
 ```
-启动后直接在浏览器中打开：
-`http://你的服务器IP:8080`
 
 ---
 
-## 🛠️ 本地开发与代码结构
+## ⌨️ 快捷键速查
 
-```text
-solara/
-├── src/
-│   ├── functions/                 # Cloudflare Pages Functions (Serverless 边缘计算)
-│   │   ├── api/
-│   │   │   ├── playlist/          # 多平台分类歌单与全网歌单搜索
-│   │   │   ├── search/            # 洛雪六大音源聚合搜索与签名加密
-│   │   │   └── sync.ts            # D1 跨设备数据漫游同步
-│   │   ├── proxy.ts               # 音频/歌词网关、体积防伪校验与同名全网兜底
-│   │   └── _middleware.ts         # 单口令身份鉴权中间件
-│   ├── server/                    # Node.js Express 本地同构路由
-│   │   └── routes/
-│   ├── js/                        # 前端播放器核心逻辑
-│   ├── css/                       # 桌面与移动端 Apple 设计风格样式
-│   └── index.html                 # 播放器单页应用主入口
-├── docker-compose.yml             # Docker 编排配置
-├── deploy-cf.sh                   # Cloudflare Pages 一键打包编译与部署脚本
-└── README.md
-```
+| 快捷键 | 功能说明 |
+| :---: | :--- |
+| **`L`** | 切换 Apple Music 风格沉浸式全屏流体大字歌词 |
+| **`Space`** | 播放 / 暂停音频 |
+| **`[` / `]`** | 切换上一首 / 下一首 |
+| **`Esc`** | 退出全屏歌词 / 关闭搜索面板 / 关闭歌单大厅 |
+| **`F11`** | 浏览器全屏显示 |
 
 ---
 
-## 📄 开源与免责声明
+## 📄 免责声明
 
-- 本项目遵循开源精神，仅供个人前端技术学习、Cloudflare Serverless 架构研究交流使用。
-- 音乐及歌词所有版权归各大音乐平台与创作者所有，严禁将本项目用于任何商业盈利活动。
+灵光音乐 (AuraMusic) 仅供个人前端工程学习、多端响应式流体视觉开发与音视频流式协议研究使用。歌曲版权归各唱片公司与音乐平台所有，请广大用户支持正版音乐。

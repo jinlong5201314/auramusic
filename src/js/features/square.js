@@ -92,8 +92,9 @@ export async function initSquare(state, dom, callbacks = {}) {
     mobileBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (window.SolaraMobileBridge?.handlers?.closeAllOverlays) {
-        window.SolaraMobileBridge.handlers.closeAllOverlays();
+      const bridge = window.AuraMobileBridge || window.SolaraMobileBridge;
+      if (bridge?.handlers?.closeAllOverlays) {
+        bridge.handlers.closeAllOverlays();
       }
       toggleSquareMode(!state.isSquareMode, state, dom, callbacks);
     });

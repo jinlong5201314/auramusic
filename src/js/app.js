@@ -364,8 +364,9 @@ export async function playSearchResult(index) {
 
     // 播放搜索结果单曲后，自动收起搜索面板返回首页（保留输入框关键词与搜索结果缓存）
     hideSearchResults(state, dom);
-    if (window.SolaraMobileBridge?.handlers?.closeSearch) {
-        window.SolaraMobileBridge.handlers.closeSearch();
+    const bridge = window.AuraMobileBridge || window.SolaraMobileBridge;
+    if (bridge?.handlers?.closeSearch) {
+        bridge.handlers.closeSearch();
     }
 
     // 检查歌曲是否已在播放列表中
@@ -888,10 +889,11 @@ function setupEventHandlers() {
             }
 
             // 移动端联动
-            if (isMobileView && window.SolaraMobileBridge?.handlers?.openSearch) {
+            const bridge = window.AuraMobileBridge || window.SolaraMobileBridge;
+            if (isMobileView && bridge?.handlers?.openSearch) {
                 const isOpen = document.body?.classList.contains("mobile-search-open");
                 if (!isOpen) {
-                    window.SolaraMobileBridge.handlers.openSearch();
+                    bridge.handlers.openSearch();
                 }
             }
         };
@@ -1240,7 +1242,7 @@ function setupEventHandlers() {
     }
 
     // 监听移动端抽屉 Tab 切换事件，确保顶栏按钮与列表状态即时刷新
-    window.addEventListener("solara:mobile-tab-changed", (e) => {
+    const handleMobileTabChanged = (e) => {
         const isFav = e.detail?.tab === "favorites";
         updateMobileLibraryActionVisibility(isFav);
         if (isFav) {
@@ -1248,7 +1250,9 @@ function setupEventHandlers() {
         } else {
             renderPlaylist(state, dom, getPlaylistCallbacks());
         }
-    });
+    };
+    window.addEventListener("aura:mobile-tab-changed", handleMobileTabChanged);
+    window.addEventListener("solara:mobile-tab-changed", handleMobileTabChanged);
 
     // 浮动菜单
     if (dom.sourceSelectButton) {
@@ -1298,8 +1302,9 @@ function setupEventHandlers() {
     // 关闭搜索结果交互（收起面板，保留输入框关键词与搜索结果缓存）
     const handleCloseSearch = () => {
         hideSearchResults(state, dom);
-        if (isMobileView && window.SolaraMobileBridge?.handlers?.closeSearch) {
-            window.SolaraMobileBridge.handlers.closeSearch();
+        const bridge = window.AuraMobileBridge || window.SolaraMobileBridge;
+        if (isMobileView && bridge?.handlers?.closeSearch) {
+            bridge.handlers.closeSearch();
         }
     };
 
@@ -1340,11 +1345,13 @@ function setupEventHandlers() {
     });
 
     // 监听移动端抽屉 Tab 切换，联动刷新收藏列表
-    window.addEventListener("solara:mobile-tab-changed", (e) => {
+    const handleFavTabChanged = (e) => {
         if (e.detail && e.detail.tab === "favorites") {
             renderFavorites(state, dom);
         }
-    });
+    };
+    window.addEventListener("aura:mobile-tab-changed", handleFavTabChanged);
+    window.addEventListener("solara:mobile-tab-changed", handleFavTabChanged);
 
     // 按 Escape 键退出搜索
     document.addEventListener("keydown", (e) => {

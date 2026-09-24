@@ -98,6 +98,7 @@ export const dom = {
     layoutToggleBtn: document.getElementById("layoutToggleBtn"),
     radarGenreList: document.getElementById("radarGenreList"),
     headerSquareBtn: document.getElementById("headerSquareBtn"),
+    headerSettingsBtn: document.getElementById("headerSettingsBtn"),
     mobileSquareBtn: document.getElementById("mobileSquareButton"),
     squareArea: document.getElementById("squareArea"),
     closeSquareBtn: document.getElementById("closeSquareBtn"),

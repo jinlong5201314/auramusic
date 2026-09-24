@@ -87,6 +87,7 @@ export function switchMobilePanelTab(targetTab) {
     }
 
     try {
+        window.dispatchEvent(new CustomEvent("aura:mobile-tab-changed", { detail: { tab: targetTab } }));
         window.dispatchEvent(new CustomEvent("solara:mobile-tab-changed", { detail: { tab: targetTab } }));
     } catch (e) {}
 }

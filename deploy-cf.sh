@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== 🚀 开始打包并部署 Solara 到 Cloudflare Pages ==="
+echo "=== 🚀 开始打包并部署 AuraMusic (灵光音乐) 到 Cloudflare Pages ==="
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/src" && pwd)"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -57,6 +57,6 @@ echo "☁️ 正在上传部署至 Cloudflare Pages (project: $PROJECT_NAME, bra
 npx wrangler pages deploy "$DIST_DIR" \
     --project-name "$PROJECT_NAME" \
     --branch "$BRANCH_NAME" \
-    --commit-message "Deploy Solara with full multi-source music engine"
+    --commit-message "Deploy AuraMusic - Fluid Aesthetics & Smart Multi-source Music Engine"
 
-echo "=== ✅ Solara 部署成功！==="
+echo "=== ✅ AuraMusic 部署成功！==="

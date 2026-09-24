@@ -269,10 +269,10 @@ export async function saveSettings(dom, state) {
 }
 
 export function initLayoutMode(dom) {
-    const STORAGE_KEY = "solara_layout_mode";
+    const STORAGE_KEY = "auramusic_layout_mode";
     const toggleBtn = dom?.layoutToggleBtn || document.getElementById("layoutToggleBtn");
     
-    let currentMode = localStorage.getItem(STORAGE_KEY);
+    let currentMode = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("solara_layout_mode");
     if (!currentMode) {
         currentMode = "compact";
     }
@@ -283,7 +283,7 @@ export function initLayoutMode(dom) {
         
         if (toggleBtn) {
             toggleBtn.setAttribute("aria-label", isCompact ? "展开为全景沉浸模式" : "收拢为大留白小播放器");
-            toggleBtn.setAttribute("title", isCompact ? "展开为全景沉浸模式（双击Logo打开设置）" : "收拢为大留白小播放器（双击Logo打开设置）");
+            toggleBtn.setAttribute("title", isCompact ? "展开为全景沉浸模式" : "收拢为大留白小播放器");
         }
         localStorage.setItem(STORAGE_KEY, mode);
 
@@ -320,10 +320,10 @@ export function initLayoutMode(dom) {
         });
     }
 
-    const brand = dom?.brandWrap || document.querySelector(".header-brand-wrap");
-    if (brand && !brand.__dblBound) {
-        brand.__dblBound = true;
-        brand.addEventListener("dblclick", (e) => {
+    const headerSettingsBtn = dom?.headerSettingsBtn || document.getElementById("headerSettingsBtn");
+    if (headerSettingsBtn && !headerSettingsBtn.__clickBound) {
+        headerSettingsBtn.__clickBound = true;
+        headerSettingsBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             openSettingsModal(dom);
         });
@@ -343,8 +343,13 @@ export function initLayoutMode(dom) {
 export function initSettings(dom, state, callbacks = {}) {
     renderGenreList(dom, state);
 
-    if (dom.logo) {
-        dom.logo.addEventListener("dblclick", () => openSettingsModal(dom, state));
+    const headerSettingsBtn = dom?.headerSettingsBtn || document.getElementById("headerSettingsBtn");
+    if (headerSettingsBtn && !headerSettingsBtn.__clickBound) {
+        headerSettingsBtn.__clickBound = true;
+        headerSettingsBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            openSettingsModal(dom, state);
+        });
     }
     
     let lastToolbarClick = 0;
