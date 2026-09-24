@@ -323,9 +323,13 @@ async function checkAudioUrlValid(audioUrl: string, minSizeBytes: number = 1.8 *
   }
 }
 
-function isArtistMatch(targetArtist: string, candidateArtist: string): boolean {
+function isArtistMatch(targetArtist: string, candidateArtist: string, songName?: string): boolean {
   if (!targetArtist) return true;
   if (!candidateArtist) return false;
+  // 特殊容灾：若曲名中明确包含了目标原唱（例如 "Cover 张妙格"、"(张妙格)"），视为官方伴奏/翻唱，属于合法替代音频
+  if (songName && songName.includes(targetArtist)) {
+    return true;
+  }
   const cleanTarget = targetArtist.toLowerCase().replace(/[\s\/\,\&、]/g, "");
   const cleanCand = candidateArtist.toLowerCase().replace(/[\s\/\,\&、]/g, "");
   const targetTokens = targetArtist.split(/[\s\/\,\&、]+/).map(t => t.trim().toLowerCase()).filter(Boolean);
@@ -358,10 +362,10 @@ async function findPlayableNeteaseTrack(name: string, artist: string, targetDura
         const sid = song.id;
         if (!sid) continue;
 
-        // 1. 严格比对歌手名：若提供了目标歌手，候选歌曲的歌手必须匹配，绝不接受“全网找歌君”等无关翻唱
+        // 1. 严格比对歌手名：若提供了目标歌手，候选歌曲的歌手或曲名必须匹配
         if (artist) {
           const songArtists = Array.isArray(song.artist) ? song.artist.join(" ") : String(song.artist || "");
-          if (!isArtistMatch(artist, songArtists)) {
+          if (!isArtistMatch(artist, songArtists, song.name)) {
             console.log(`[Audio Fallback] 跳过歌手不匹配曲目: 《${song.name}》- ${songArtists} (目标: ${artist})`);
             continue;
           }

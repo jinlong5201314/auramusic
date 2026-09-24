@@ -292,11 +292,12 @@ async function checkAudioUrlValid(audioUrl, minSizeBytes = 1.8 * 1024 * 1024) {
   }
 }
 
-function isArtistMatch(targetArtist, candidateArtist) {
+function isArtistMatch(targetArtist, candidateArtist, songName) {
   if (!targetArtist) return true;
   if (!candidateArtist) return false;
-  const cleanTarget = targetArtist.toLowerCase().replace(/[\s\/\,\&、]/g, '');
-  const cleanCand = candidateArtist.toLowerCase().replace(/[\s\/\,\&、]/g, '');
+  if (songName && songName.includes(targetArtist)) return true;
+  const cleanTarget = targetArtist.toLowerCase().replace(/[\s\/\,\&、]/g, "");
+  const cleanCand = candidateArtist.toLowerCase().replace(/[\s\/\,\&、]/g, "");
   const targetTokens = targetArtist.split(/[\s\/\,\&、]+/).map(t => t.trim().toLowerCase()).filter(Boolean);
   const candTokens = candidateArtist.split(/[\s\/\,\&、]+/).map(t => t.trim().toLowerCase()).filter(Boolean);
   for (const t of targetTokens) {
@@ -326,11 +327,11 @@ async function findPlayableNeteaseTrack(name, artist, targetDuration = 0, apiBas
         const sid = song.id;
         if (!sid) continue;
 
-        // 1. 严格比对歌手名：若提供了目标歌手，候选歌曲的歌手必须匹配，绝不接受“全网找歌君”等无关翻唱
+        // 1. 严格比对歌手名：若提供了目标歌手，候选歌曲的歌手或曲名必须匹配
         if (artist) {
-          const songArtists = Array.isArray(song.artist) ? song.artist.join(' ') : String(song.artist || '');
-          if (!isArtistMatch(artist, songArtists)) {
-            console.log(`[Audio Fallback Node] 跳过歌手不匹配曲目: 《${song.name}》- ${songArtists} (目标: ${artist})`);
+          const songArtists = Array.isArray(song.artist) ? song.artist.join(" ") : String(song.artist || "");
+          if (!isArtistMatch(artist, songArtists, song.name)) {
+            console.log(`[Audio Fallback] 跳过歌手不匹配曲目: 《${song.name}》- ${songArtists} (目标: ${artist})`);
             continue;
           }
         }
