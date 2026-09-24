@@ -138,6 +138,8 @@ export function renderLxSourceList(dom) {
             const id = item.getAttribute("data-id");
             if (id && id !== lxPluginEngine.activeSourceId) {
                 showNotification("正在切换音源...", "info", dom);
+                lxPluginEngine.activeSourceId = id;
+                safeSetLocalStorage("lxMusicActiveSourceId", id);
                 const ok = await lxPluginEngine.activateSource(id);
                 renderLxSourceList(dom);
             // 立即向云端 D1 增量同步音源列表与状态

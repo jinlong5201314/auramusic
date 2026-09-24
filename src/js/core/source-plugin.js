@@ -70,7 +70,8 @@ class LxMusicPluginEngine {
      */
     getActiveSource() {
         if (!this.sources.length) return null;
-        return this.sources.find(s => s.id === this.activeSourceId) || this.sources[0];
+        const currentActiveId = this.activeSourceId || safeGetLocalStorage("lxMusicActiveSourceId");
+        return this.sources.find(s => s.id === currentActiveId) || this.sources[0];
     }
 
     /**
@@ -78,7 +79,8 @@ class LxMusicPluginEngine {
      * 如果直连失败或报错，自动通过 Solara 的同构代理 (/proxy?target=...) 回源
      */
     async httpFetch(url, options = {}) {
-        const timeoutMs = options.timeout || 8000;
+        const timeoutMs = options.timeout || 12000;
+        const proxyTimeoutMs = Math.max(timeoutMs, 15000);
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -117,7 +119,10 @@ class LxMusicPluginEngine {
             console.log(`[LX Sandbox] 直连受限 (${directErr.message})，转入 Solara 边缘网关代理: ${url}`);
             const proxyUrl = `/proxy?target=${encodeURIComponent(url)}`;
             const proxyController = new AbortController();
-            const proxyTimer = setTimeout(() => proxyController.abort(), timeoutMs);
+            let proxyTimer = null;
+            if (proxyTimeoutMs > 0) {
+                proxyTimer = setTimeout(() => proxyController.abort(), proxyTimeoutMs);
+            }
 
             try {
                 const proxyOpts = {
@@ -510,7 +515,7 @@ class LxMusicPluginEngine {
                 console.log(`[LX Sandbox] 正在尝试通过音源【${currentSrc.name}】解析: ${song.name} (${lxSource} / ${lxQuality})`);
 
                 const timeoutPromise = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error("音源响应超时 (2.8s)")), 2800);
+                    setTimeout(() => reject(new Error("音源响应超时 (6.5s)")), 6500);
                 });
 
                 const execPromise = Promise.resolve().then(() => this.registeredHandler({
