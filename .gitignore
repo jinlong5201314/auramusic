@@ -4,6 +4,7 @@ dist/
 data/
 *.log
 .DS_Store
+.wrangler/
 
 # 敏感与凭证信息
 .env
