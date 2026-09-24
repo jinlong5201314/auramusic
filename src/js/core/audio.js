@@ -19,6 +19,37 @@ export const playModeTexts = {
 const audioUrlMemoryCache = new Map();
 const AUDIO_URL_CACHE_TTL = 15 * 60 * 1000;
 
+/**
+ * 快速探测 D1 缓存的音频直链是否仍旧存活有效
+ * 仅发送带有 Range: bytes=0-0 的超轻量 HEAD/GET 探针，耗时 < 300ms，流量仅几个字节
+ */
+async function checkCachedAudioUrlFast(url) {
+    if (!url || typeof url !== "string") return false;
+    try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 2000);
+        const resp = await fetch(url, {
+            method: "HEAD",
+            headers: { "Range": "bytes=0-0" },
+            signal: controller.signal
+        }).catch(async () => {
+            // 部分 CDN 不支持 HEAD，尝试带 Range 的 GET 请求首字节
+            return await fetch(url, {
+                method: "GET",
+                headers: { "Range": "bytes=0-0" },
+                signal: controller.signal
+            });
+        });
+        clearTimeout(timer);
+        if (!resp) return false;
+        // 200 OK 或 206 Partial Content 说明链接可用
+        return resp.status === 200 || resp.status === 206;
+    } catch (e) {
+        // 网络异常或 CORS 阻断时，返回 false 走安全重新解析
+        return false;
+    }
+}
+
 export const APPLE_SVG_ICONS = {
     play: `<svg class="apple-svg-icon icon-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5.5v13a1.5 1.5 0 0 0 2.3 1.28l10.5-6.5a1.5 1.5 0 0 0 0-2.56L9.3 4.22A1.5 1.5 0 0 0 7 5.5z"/></svg>`,
     pause: `<svg class="apple-svg-icon icon-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1zm11 0a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1z"/></svg>`,
@@ -322,6 +353,45 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
             }
         }
 
+        // 1.1 优先命中 D1 数据库记录的持久音频直链（收藏夹歌曲）
+        if (!isRetry && !originalAudioUrl) {
+            let candidateDbUrl = null;
+            if (typeof song.audioUrl === "string" && song.audioUrl.startsWith("http")) {
+                candidateDbUrl = song.audioUrl;
+            } else if (state.favoriteSongs && Array.isArray(state.favoriteSongs)) {
+                const currentSongKey = getSongKey(song);
+                const fav = state.favoriteSongs.find(item => getSongKey(item) === currentSongKey);
+                if (fav && typeof fav.audioUrl === "string" && fav.audioUrl.startsWith("http")) {
+                    candidateDbUrl = fav.audioUrl;
+                }
+            }
+
+            if (candidateDbUrl) {
+                log(`[D1 缓存] 命中 D1 数据库记录的音频链接: ${song.name}，正在预验有效性...`);
+                setResolveStatus(dom, "resolving", "正在验证 D1 缓存链接...");
+                const isQuickValid = await checkCachedAudioUrlFast(candidateDbUrl);
+                if (isQuickValid) {
+                    originalAudioUrl = candidateDbUrl;
+                    resolvedSourceChannel = "D1 直链秒开";
+                    log(`[D1 缓存] D1 数据库链接验证通过，直接播放，无需重新解析！`);
+                } else {
+                    log(`[D1 缓存] D1 记录的音频链接已过期或失效，自动清除并走常规多源解析流程...`);
+                    // 标记清除失效链接
+                    if (song.audioUrl) delete song.audioUrl;
+                    if (state.favoriteSongs && Array.isArray(state.favoriteSongs)) {
+                        const currentSongKey = getSongKey(song);
+                        const fav = state.favoriteSongs.find(item => getSongKey(item) === currentSongKey);
+                        if (fav && fav.audioUrl) {
+                            delete fav.audioUrl;
+                            if (typeof callbacks.saveFavoriteState === "function") {
+                                callbacks.saveFavoriteState();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // 2. 未命中或重试时，发起实际网络请求
         if (!originalAudioUrl) {
             // 2.0 优先尝试激活的洛雪自定义音源订阅（若已配置且开启）
@@ -467,6 +537,22 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
 
         if (!selectedAudioUrl) {
             throw lastAudioError || new Error('音频加载失败');
+        }
+
+        // 成功解析且验证音频有效：如果当前正在播放收藏夹，或该歌曲在收藏夹中，持久化直链到 D1 数据库
+        if (originalAudioUrl && state.favoriteSongs && Array.isArray(state.favoriteSongs)) {
+            const currentSongKey = getSongKey(song);
+            const favIndex = state.favoriteSongs.findIndex(item => getSongKey(item) === currentSongKey);
+            if (favIndex >= 0) {
+                const targetFav = state.favoriteSongs[favIndex];
+                if (targetFav.audioUrl !== originalAudioUrl) {
+                    targetFav.audioUrl = originalAudioUrl;
+                    log(`[D1 缓存] 已将《${song.name}》有效音频直链记录到收藏夹 D1 数据库`);
+                    if (typeof callbacks.saveFavoriteState === "function") {
+                        callbacks.saveFavoriteState();
+                    }
+                }
+            }
         }
 
         if (myToken !== currentPlaybackToken) {
