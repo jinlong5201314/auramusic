@@ -52,17 +52,75 @@ AuraMusic 在架构演进与功能开发过程中，深受开源社区先驱项�
 
 ---
 
-### 方案一：Cloudflare Pages 边缘一键部署（推荐）
+### 方案一：Cloudflare Pages 边缘部署（推荐，免费无限量）
 
-#### 1. 本地拉取代码
+Cloudflare Pages 部署提供全自动 CI/CD、全球 Anycast CDN 极速加速以及零服务器运维体验。以下为**最详细的手动部署实操步骤**（包含控制台界面与 CLI 两种方式）：
+
+#### 步骤 1：Fork 或直接导入 GitHub 仓库
+1. 访问你的 GitHub，确保已 Fork 或导入本项目仓库：
+   ```bash
+   https://github.com/jinlong5201314/auramusic
+   ```
+
+#### 步骤 2：在 Cloudflare 创建 D1 数据库（用于多设备播放漫游）
+AuraMusic 支持使用 Cloudflare D1 存储你的歌单收藏与播放历史，数据表会在首次请求时**全自动建表**，无需手动执行 SQL。
+1. 登录 [Cloudflare 控制台](https://dash.cloudflare.com/)；
+2. 在左侧菜单点击 **存储和数据库 (Storage & Databases)** -> **D1 SQL 数据库**；
+3. 点击 **创建 (Create)**，输入数据库名称（例如命名为 `auramusic-db`），点击确认创建；
+4. 创建完成后，记录下该数据库即可（代码会在运行时自动执行 `CREATE TABLE IF NOT EXISTS playback_store` 与 `favorites_store`）。
+
+#### 步骤 3：创建 Cloudflare Pages 项目
+1. 在 Cloudflare 左侧导航栏点击 **Workers 和 Pages** -> **创建** -> 选择 **Pages** 选项卡；
+2. 选择 **连接到 Git (Connect to Git)**，授权并选择你的 `auramusic` 仓库；
+3. 在设置构建和部署参数页面中填写：
+   - **项目名称**：`auramusic`（或你喜欢的名字）
+   - **生产分支**：`main`
+   - **框架预设 (Framework preset)**：选择 `无 (None)`
+   - **构建命令 (Build command)**：留空（无需构建命令）
+   - **构建输出目录 (Build output directory)**：填写 `src`
+4. 点击 **保存并部署 (Save and Deploy)**。
+
+#### 步骤 4：绑定 D1 数据库 (重要)
+1. 部署完成后，进入该 Pages 项目的 **设置 (Settings)** 选项卡；
+2. 在左侧菜单点击 **函数 (Functions)**；
+3. 向下滚动找到 **D1 数据库绑定 (D1 Database Bindings)**，点击 **添加绑定 (Add binding)**；
+4. 填写绑定参数：
+   - **变量名称 (Variable name)**：必须严格填写为 `DB`（全大写）
+   - **D1 数据库**：选择刚刚在步骤 2 创建的 `auramusic-db`
+5. 点击 **保存 (Save)**。
+
+#### 步骤 5：配置访问密码与环境变量 (可选但推荐)
+如果希望保护你的音乐播放器，防止被公开滥用，可设置访问保护密码：
+1. 在 Pages 项目的 **设置 (Settings)** 选项卡下，点击 **环境变量 (Environment variables)**；
+2. 在 **生产 (Production)** 区域点击 **添加变量 (Add variable)**：
+   - **变量名**：`PASSWORD`
+   - **值**：填写你的访问密码（如 `MyMusic2026`）
+3. （可选）如果使用自建 GD 音乐 API 网关，可添加变量：
+   - **变量名**：`API_BASE_URL`
+   - **值**：`https://music-api.gdstudio.xyz/api.php`（默认内置官方源）
+4. 点击 **保存 (Save)**。
+
+#### 步骤 6：重新部署使配置生效
+绑定 D1 数据库或修改环境变量后，需要在 **部署 (Deployments)** 选项卡中，点击最新一次部署右侧的 `···`，选择 **重试部署 (Retry deployment)**；或者向 GitHub 仓库提交一次代码，Cloudflare 会自动完成重新部署。部署完成后访问分配的 `*.pages.dev` 域名即可！
+
+---
+
+#### 🌟 进阶：使用本地终端命令行 (Wrangler CLI) 部署
+如果你更习惯在本地终端快速一键发布，可使用 Cloudflare 官方 CLI 工具：
 ```bash
+# 1. 克隆代码
 git clone https://github.com/jinlong5201314/auramusic.git
 cd auramusic
-```
 
-#### 2. 部署构建与发布
-通过项目内置的部署脚本一键打包并发布至 Cloudflare Pages：
-```bash
+# 2. 安装 Wrangler (如已安装可跳过)
+npm install -g wrangler
+npx wrangler login
+
+# 3. 创建 D1 数据库
+npx wrangler d1 create auramusic-db
+# 命令会输出 database_name 和 database_id
+
+# 4. 执行项目内置一键编译与发布脚本
 chmod +x deploy-cf.sh
 ./deploy-cf.sh
 ```
