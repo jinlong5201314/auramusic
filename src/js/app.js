@@ -1514,25 +1514,23 @@ export async function applyPersistentSnapshotFromRemote(data) {
         try {
             const list = JSON.parse(data.lxMusicSourcesList);
             if (Array.isArray(list)) {
-                import("./core/source-plugin.js").then(({ lxPluginEngine }) => {
-                    lxPluginEngine.sources = list;
-                    if (typeof data.lxMusicActiveSourceId === "string" && data.lxMusicActiveSourceId) {
-                        lxPluginEngine.activeSourceId = data.lxMusicActiveSourceId;
-                        safeSetLocalStorage("lxMusicActiveSourceId", data.lxMusicActiveSourceId, { skipRemote: true });
-                    }
-                    if (typeof data.lxMusicSourceEnabled === "string") {
-                        lxPluginEngine.isEnabled = data.lxMusicSourceEnabled !== "false";
-                        safeSetLocalStorage("lxMusicSourceEnabled", data.lxMusicSourceEnabled, { skipRemote: true });
-                    }
-                    const activeId = lxPluginEngine.activeSourceId || list[0]?.id;
-                    if (activeId) {
-                        lxPluginEngine.activateSource(activeId).catch(e => console.warn("[LX D1 Sync]", e));
-                    }
-                    // 如果设置弹窗正打开着，刷新列表渲染
-                    import("./features/settings.js").then(({ renderLxSourceList }) => {
-                        renderLxSourceList(dom);
-                    });
-                });
+                const { lxPluginEngine } = await import("./core/source-plugin.js");
+                lxPluginEngine.sources = list;
+                if (typeof data.lxMusicActiveSourceId === "string" && data.lxMusicActiveSourceId) {
+                    lxPluginEngine.activeSourceId = data.lxMusicActiveSourceId;
+                    safeSetLocalStorage("lxMusicActiveSourceId", data.lxMusicActiveSourceId, { skipRemote: true });
+                }
+                if (typeof data.lxMusicSourceEnabled === "string") {
+                    lxPluginEngine.isEnabled = data.lxMusicSourceEnabled !== "false";
+                    safeSetLocalStorage("lxMusicSourceEnabled", data.lxMusicSourceEnabled, { skipRemote: true });
+                }
+                const activeId = lxPluginEngine.activeSourceId || list[0]?.id;
+                if (activeId) {
+                    await lxPluginEngine.activateSource(activeId).catch(e => console.warn("[LX D1 Sync]", e));
+                }
+                // 如果设置弹窗正打开着，刷新列表渲染
+                const { renderLxSourceList } = await import("./features/settings.js");
+                renderLxSourceList(dom);
             }
         } catch (e) {
             console.warn("[LX D1 Sync] 还原音源列表失败:", e);
