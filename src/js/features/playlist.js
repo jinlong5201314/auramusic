@@ -233,6 +233,9 @@ export function renderPlaylist(state, dom, callbacks = {}) {
                 <span class="playlist-item-artist"> - ${artistValue}</span>
             </div>
             <div class="playlist-item-actions" role="toolbar" aria-label="歌曲操作">
+                <button class="playlist-item-action playlist-item-cpl" type="button" data-playlist-action="add-to-cpl" data-index="${index}" title="添加到歌单" aria-label="添加到歌单">
+                    <i class="fas fa-folder-plus"></i>
+                </button>
                 <button class="playlist-item-favorite favorite-toggle" type="button" data-playlist-action="favorite" data-index="${index}" data-favorite-key="${songKey}" title="收藏" aria-label="收藏">
                     <i class="fa-regular fa-heart"></i>
                 </button>
@@ -310,7 +313,7 @@ export function updateAllTabsIndicators() {
 }
 
 export function switchLibraryTab(target, dom, callbacks = {}) {
-    const validTargets = ["playlist", "favorites", "square"];
+    const validTargets = ["playlist", "favorites", "customPlaylists", "square"];
     const currentTarget = validTargets.includes(target) ? target : "playlist";
 
     if (Array.isArray(dom.libraryTabs) && dom.libraryTabs.length > 0) {
@@ -330,7 +333,8 @@ export function switchLibraryTab(target, dom, callbacks = {}) {
 
     const panels = [
         { name: "playlist", el: dom.playlist },
-        { name: "favorites", el: dom.favorites }
+        { name: "favorites", el: dom.favorites },
+        { name: "customPlaylists", el: dom.customPlaylists || document.getElementById("customPlaylists") }
     ];
 
     panels.forEach(({ name, el }) => {
@@ -348,7 +352,7 @@ export function switchLibraryTab(target, dom, callbacks = {}) {
     updateAllTabsIndicators();
 
     if (typeof callbacks.updateMobileLibraryActionVisibility === "function") {
-        callbacks.updateMobileLibraryActionVisibility(currentTarget === "favorites");
+        callbacks.updateMobileLibraryActionVisibility(currentTarget);
     }
     if (typeof callbacks.updateMobileClearPlaylistVisibility === "function") {
         callbacks.updateMobileClearPlaylistVisibility();

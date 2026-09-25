@@ -23,3 +23,6 @@
 
 /* 7. 歌单广场沉浸全屏大厅与分类瀑布流 */
 @import url("mobile/square.css?v=2.7.0");
+
+/* 8. 自定义歌单流体样式适配 */
+@import url("components/custom-playlists.css");

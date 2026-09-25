@@ -254,6 +254,18 @@ export function createSearchResultItem(song, index, state, dom, callbacks = {}) 
     const actions = document.createElement("div");
     actions.className = "search-result-actions";
 
+    const addToPlaylistButton = document.createElement("button");
+    addToPlaylistButton.className = "action-btn add-to-cpl";
+    addToPlaylistButton.type = "button";
+    addToPlaylistButton.title = "添加到歌单";
+    addToPlaylistButton.innerHTML = '<i class="fas fa-folder-plus"></i>';
+    addToPlaylistButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (typeof callbacks.addToPlaylist === "function") {
+            callbacks.addToPlaylist(song);
+        }
+    });
+
     const favoriteButton = document.createElement("button");
     favoriteButton.className = "action-btn favorite favorite-toggle";
     favoriteButton.type = "button";
@@ -285,6 +297,7 @@ export function createSearchResultItem(song, index, state, dom, callbacks = {}) 
         if (typeof callbacks.showQualityMenu === "function") callbacks.showQualityMenu(event, index, "search");
     });
 
+    actions.appendChild(addToPlaylistButton);
     actions.appendChild(favoriteButton);
     actions.appendChild(playButton);
     actions.appendChild(downloadButton);

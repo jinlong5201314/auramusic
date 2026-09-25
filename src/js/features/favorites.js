@@ -172,6 +172,9 @@ export function renderFavorites(state, dom) {
                 <span class="playlist-item-artist"> - ${artistValue}</span>
             </div>
             <div class="playlist-item-actions" role="toolbar" aria-label="歌曲操作">
+                <button class="favorite-item-action favorite-item-action--cpl" type="button" data-favorite-action="add-to-cpl" data-index="${index}" title="添加到歌单" aria-label="添加到歌单">
+                    <i class="fas fa-folder-plus"></i>
+                </button>
                 <button class="favorite-item-action favorite-item-action--add" type="button" data-favorite-action="add" data-index="${index}" title="添加到播放列表" aria-label="添加到播放列表">
                     <i class="fas fa-plus"></i>
                 </button>

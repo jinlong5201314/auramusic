@@ -366,6 +366,20 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
                 }
             }
 
+            // 1.1.2 检查是否命中自定义歌单中记录的 D1 持久音频直链
+            if (!candidateDbUrl && state.customPlaylists && Array.isArray(state.customPlaylists)) {
+                const currentSongKey = getSongKey(song);
+                for (const pl of state.customPlaylists) {
+                    if (Array.isArray(pl.songs)) {
+                        const found = pl.songs.find(item => getSongKey(item) === currentSongKey);
+                        if (found && typeof found.audioUrl === "string" && found.audioUrl.startsWith("http")) {
+                            candidateDbUrl = found.audioUrl;
+                            break;
+                        }
+                    }
+                }
+            }
+
             if (candidateDbUrl) {
                 log(`[D1 缓存] 命中 D1 数据库记录的音频链接: ${song.name}，正在预验有效性...`);
                 setResolveStatus(dom, "resolving", "正在验证 D1 缓存链接...");
@@ -386,6 +400,23 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
                             if (typeof callbacks.saveFavoriteState === "function") {
                                 callbacks.saveFavoriteState();
                             }
+                        }
+                    }
+                    if (state.customPlaylists && Array.isArray(state.customPlaylists)) {
+                        let cplChanged = false;
+                        const currentSongKey = getSongKey(song);
+                        for (const pl of state.customPlaylists) {
+                            if (Array.isArray(pl.songs)) {
+                                for (const item of pl.songs) {
+                                    if (getSongKey(item) === currentSongKey && item.audioUrl) {
+                                        delete item.audioUrl;
+                                        cplChanged = true;
+                                    }
+                                }
+                            }
+                        }
+                        if (cplChanged && typeof callbacks.saveCustomPlaylists === "function") {
+                            callbacks.saveCustomPlaylists();
                         }
                     }
                 }
@@ -555,6 +586,26 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
             }
         }
 
+        // 成功解析且验证音频有效：如果该歌曲在自定义歌单中，同步持久化直链到 D1 数据库
+        if (originalAudioUrl && state.customPlaylists && Array.isArray(state.customPlaylists)) {
+            let cplChanged = false;
+            const currentSongKey = getSongKey(song);
+            for (const pl of state.customPlaylists) {
+                if (Array.isArray(pl.songs)) {
+                    for (const item of pl.songs) {
+                        if (getSongKey(item) === currentSongKey && item.audioUrl !== originalAudioUrl) {
+                            item.audioUrl = originalAudioUrl;
+                            cplChanged = true;
+                            log(`[D1 缓存] 已将《${song.name}》有效音频直链记录到自定义歌单【${pl.name}】D1 数据库`);
+                        }
+                    }
+                }
+            }
+            if (cplChanged && typeof callbacks.saveCustomPlaylists === "function") {
+                callbacks.saveCustomPlaylists();
+            }
+        }
+
         if (myToken !== currentPlaybackToken) {
             return;
         }
@@ -662,6 +713,28 @@ export function playNext(state, dom, callbacks = {}) {
         return;
     }
 
+    if (state.currentList === "custom") {
+        const pl = state.customPlaylists?.find(p => p.id === state.currentCustomPlaylistId);
+        if (!pl || !Array.isArray(pl.songs) || pl.songs.length === 0) {
+            if (typeof callbacks.clearLyricsIfLibraryEmpty === "function") callbacks.clearLyricsIfLibraryEmpty();
+            return;
+        }
+        const mode = state.playMode || "list";
+        let nextIndex = state.currentCustomSongIndex || 0;
+        if (mode === "random") {
+            nextIndex = Math.floor(Math.random() * pl.songs.length);
+        } else if (mode === "list") {
+            nextIndex = ((state.currentCustomSongIndex || 0) + 1) % pl.songs.length;
+        }
+        if (mode !== "single") {
+            state.currentCustomSongIndex = nextIndex;
+        }
+        if (typeof callbacks.playCustomPlaylistSong === "function") {
+            callbacks.playCustomPlaylistSong(state.currentCustomPlaylistId, state.currentCustomSongIndex);
+        }
+        return;
+    }
+
     let nextIndex = -1;
     let playlist = [];
 
@@ -723,6 +796,26 @@ export function playPrevious(state, dom, callbacks = {}) {
         }
         if (typeof callbacks.playFavoriteSong === "function") {
             callbacks.playFavoriteSong(state.currentFavoriteIndex);
+        }
+        return;
+    }
+
+    if (state.currentList === "custom") {
+        const pl = state.customPlaylists?.find(p => p.id === state.currentCustomPlaylistId);
+        if (!pl || !Array.isArray(pl.songs) || pl.songs.length === 0) return;
+        const mode = state.playMode || "list";
+        let prevIndex = state.currentCustomSongIndex || 0;
+        if (mode === "random") {
+            prevIndex = Math.floor(Math.random() * pl.songs.length);
+        } else if (mode === "list") {
+            prevIndex = (state.currentCustomSongIndex || 0) - 1;
+            if (prevIndex < 0) prevIndex = pl.songs.length - 1;
+        }
+        if (mode !== "single") {
+            state.currentCustomSongIndex = prevIndex;
+        }
+        if (typeof callbacks.playCustomPlaylistSong === "function") {
+            callbacks.playCustomPlaylistSong(state.currentCustomPlaylistId, state.currentCustomSongIndex);
         }
         return;
     }

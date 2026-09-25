@@ -10,16 +10,19 @@ export function normalizePanelView(view) {
 }
 
 export function switchMobilePanelTab(targetTab) {
-    const validTabs = ["playlist", "favorites", "square"];
+    const validTabs = ["playlist", "favorites", "customPlaylists", "square"];
     const currentTab = validTabs.includes(targetTab) ? targetTab : "playlist";
 
     const plTab = $("mobilePlaylistTab");
     const favTab = $("mobileFavoritesTab");
+    const cplTab = $("mobileCustomPlaylistsTab");
     const sqTab = $("mobileSquareTab");
     const plActions = $("mobilePlaylistActions");
     const favActions = $("mobileFavoritesActions");
+    const cplActions = $("mobileCustomPlaylistsActions");
     const playlist = $("playlist");
     const favorites = $("favorites");
+    const customPlaylists = $("customPlaylists");
     const square = $("square");
 
     if (plTab) {
@@ -29,6 +32,10 @@ export function switchMobilePanelTab(targetTab) {
     if (favTab) {
         favTab.classList.toggle("active", currentTab === "favorites");
         favTab.setAttribute("aria-selected", currentTab === "favorites" ? "true" : "false");
+    }
+    if (cplTab) {
+        cplTab.classList.toggle("active", currentTab === "customPlaylists");
+        cplTab.setAttribute("aria-selected", currentTab === "customPlaylists" ? "true" : "false");
     }
     if (sqTab) {
         sqTab.classList.toggle("active", currentTab === "square");
@@ -43,10 +50,15 @@ export function switchMobilePanelTab(targetTab) {
         favActions.hidden = currentTab !== "favorites";
         favActions.setAttribute("aria-hidden", currentTab !== "favorites" ? "true" : "false");
     }
+    if (cplActions) {
+        cplActions.hidden = currentTab !== "customPlaylists";
+        cplActions.setAttribute("aria-hidden", currentTab !== "customPlaylists" ? "true" : "false");
+    }
 
     const panels = [
         { name: "playlist", el: playlist },
         { name: "favorites", el: favorites },
+        { name: "customPlaylists", el: customPlaylists },
         { name: "square", el: square }
     ];
 
@@ -77,7 +89,11 @@ export function switchMobilePanelTab(targetTab) {
                 indicator.setAttribute("aria-hidden", "true");
                 tabsContainer.prepend(indicator);
             }
-            const activeTab = isFavorites ? favTab : plTab;
+            let activeTab = plTab;
+            if (currentTab === "favorites") activeTab = favTab;
+            else if (currentTab === "customPlaylists") activeTab = cplTab;
+            else if (currentTab === "square") activeTab = sqTab;
+
             if (activeTab && activeTab.offsetWidth > 0) {
                 indicator.style.transform = `translateX(${activeTab.offsetLeft}px)`;
                 indicator.style.width = `${activeTab.offsetWidth}px`;

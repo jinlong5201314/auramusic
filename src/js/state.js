@@ -53,7 +53,24 @@ const savedFavoritePlaybackTime = (() => {
 
 const savedCurrentList = (() => {
     const stored = safeGetLocalStorage("currentList");
-    return stored === "favorite" ? "favorite" : "playlist";
+    if (stored === "favorite" || stored === "custom") return stored;
+    return "playlist";
+})();
+
+const savedCustomPlaylists = (() => {
+    const stored = safeGetLocalStorage("customPlaylists");
+    const parsed = parseJSON(stored, []);
+    return Array.isArray(parsed) ? parsed : [];
+})();
+
+const savedCurrentCustomPlaylistId = (() => {
+    return safeGetLocalStorage("currentCustomPlaylistId") || null;
+})();
+
+const savedCurrentCustomSongIndex = (() => {
+    const stored = safeGetLocalStorage("currentCustomSongIndex");
+    const index = Number.parseInt(stored, 10);
+    return Number.isInteger(index) && index >= 0 ? index : 0;
 })();
 
 const savedCurrentTrackIndex = (() => {
@@ -141,6 +158,10 @@ export const state = {
     playlistLastNonRandomMode: savedPlayMode === "random" ? "list" : savedPlayMode,
     favoriteSongs: savedFavoriteSongs,
     currentFavoriteIndex: savedCurrentFavoriteIndex,
+    customPlaylists: savedCustomPlaylists,
+    currentCustomPlaylistId: savedCurrentCustomPlaylistId,
+    currentCustomSongIndex: savedCurrentCustomSongIndex,
+    activeCustomPlaylistDetailId: null,
     currentList: savedCurrentList,
     favoritePlayMode: savedFavoritePlayMode,
     favoriteLastNonRandomMode: savedFavoritePlayMode === "random" ? "list" : savedFavoritePlayMode,

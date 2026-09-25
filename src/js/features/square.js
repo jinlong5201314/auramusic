@@ -659,6 +659,9 @@ export async function openPlaylistDetailModal(playlistId, state, dom, callbacks 
                 <span class="modal-pl-song-name">${s.name}</span>
                 <span class="modal-pl-song-artist">${s.artist} ${s.album ? `— 《${s.album}》` : ''}</span>
               </div>
+              <button type="button" class="modal-pl-cpl-btn" data-square-action="add-to-cpl" data-song-index="${idx}" title="添加到我的歌单">
+                <i class="fas fa-folder-plus"></i>
+              </button>
               <button type="button" class="modal-pl-single-play" title="播放此歌曲">
                 <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5.5v13a1.5 1.5 0 0 0 2.3 1.28l10.5-6.5a1.5 1.5 0 0 0 0-2.56L9.3 4.22A1.5 1.5 0 0 0 7 5.5z"/></svg>
               </button>
@@ -666,10 +669,19 @@ export async function openPlaylistDetailModal(playlistId, state, dom, callbacks 
           `;
         }).join("");
 
-        // 绑定单曲点播
+        // 绑定单曲点播与添加到自定义歌单
         songList.querySelectorAll(".modal-pl-song-row").forEach((row) => {
-          row.addEventListener("click", () => {
+          row.addEventListener("click", (e) => {
+            const cplBtn = e.target.closest("[data-square-action='add-to-cpl']");
             const idx = parseInt(row.dataset.songIndex, 10);
+            if (cplBtn) {
+              e.stopPropagation();
+              const targetSong = songs[idx];
+              if (targetSong && typeof callbacks.addToPlaylist === "function") {
+                callbacks.addToPlaylist(targetSong);
+              }
+              return;
+            }
             playSingleFromModal(idx, state, dom, callbacks);
           });
         });

@@ -1,0 +1,590 @@
+/**
+ * AuraMusic 自定义歌单流体拟态样式
+ */
+
+/* 1. 桌面端与移动端歌单面板容器 */
+.custom-playlists-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+.custom-playlists-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 14px 20px;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 2. 歌单网格卡片流 */
+.custom-playlists-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+}
+
+@media (max-width: 768px) {
+    .custom-playlists-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}
+
+.custom-playlist-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--surface-translucent, rgba(255, 255, 255, 0.55));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+    border-radius: 14px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+    transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+    user-select: none;
+}
+
+body.dark-mode .custom-playlist-card {
+    background: rgba(36, 36, 42, 0.65);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.custom-playlist-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    border-color: var(--accent-color, #fc3c44);
+}
+
+.custom-playlist-card.is-playing {
+    border-color: var(--accent-color, #fc3c44);
+    background: var(--accent-light, rgba(252, 60, 68, 0.08));
+}
+
+.cpl-card-media {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.cpl-card-cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.cpl-card-cover-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(252, 60, 68, 0.2), rgba(255, 120, 80, 0.4));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-color, #fc3c44);
+    font-size: 20px;
+}
+
+.cpl-card-play-btn {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent-color, #fc3c44);
+    color: #fff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(252, 60, 68, 0.4);
+}
+
+.custom-playlist-card:hover .cpl-card-play-btn,
+body.mobile-view .cpl-card-play-btn {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.cpl-card-info {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.cpl-card-title {
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--text-primary, #1d1d1f);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+
+body.dark-mode .cpl-card-title {
+    color: #f5f5f7;
+}
+
+.cpl-card-meta {
+    font-size: 12px;
+    color: var(--text-secondary, #86868b);
+    margin-top: 3px;
+}
+
+.cpl-card-actions {
+    display: flex;
+    gap: 6px;
+    opacity: 0.75;
+    transition: opacity 0.2s ease;
+}
+
+.custom-playlist-card:hover .cpl-card-actions {
+    opacity: 1;
+}
+
+.cpl-card-opt-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(0, 0, 0, 0.04);
+    color: var(--text-secondary, #86868b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+body.dark-mode .cpl-card-opt-btn {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.cpl-card-opt-btn:hover {
+    color: var(--accent-color, #fc3c44);
+    background: rgba(252, 60, 68, 0.12);
+    transform: scale(1.08);
+}
+
+/* 3. 详情视图导航条 */
+.cpl-detail-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px 12px;
+    border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+    margin-bottom: 8px;
+}
+
+.cpl-detail-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.cpl-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    font-size: 12.5px;
+    font-weight: 500;
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+    background: var(--surface-translucent, rgba(255, 255, 255, 0.7));
+    color: var(--text-primary, #1d1d1f);
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+body.dark-mode .cpl-back-btn {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f5f5f7;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.cpl-back-btn:hover {
+    background: var(--accent-color, #fc3c44);
+    color: #fff;
+    border-color: var(--accent-color, #fc3c44);
+}
+
+.cpl-detail-heading {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary, #1d1d1f);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body.dark-mode .cpl-detail-heading {
+    color: #f5f5f7;
+}
+
+.cpl-detail-badge {
+    font-size: 11px;
+    color: var(--text-secondary, #86868b);
+    background: rgba(0, 0, 0, 0.05);
+    padding: 2px 7px;
+    border-radius: 6px;
+}
+
+body.dark-mode .cpl-detail-badge {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.cpl-detail-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.cpl-detail-tool-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 11px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.cpl-detail-tool-btn--play {
+    background: var(--accent-color, #fc3c44);
+    color: #fff;
+}
+
+.cpl-detail-tool-btn--play:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+}
+
+.cpl-detail-tool-btn--delete {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-secondary, #86868b);
+}
+
+body.dark-mode .cpl-detail-tool-btn--delete {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.cpl-detail-tool-btn--delete:hover {
+    color: #ff3b30;
+    background: rgba(255, 59, 48, 0.1);
+}
+
+/* 4. D1 数据库秒开直链角标 */
+.d1-cached-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 4px;
+    background: rgba(52, 199, 89, 0.14);
+    color: #34c759;
+    margin-left: 6px;
+    border: 1px solid rgba(52, 199, 89, 0.3);
+    vertical-align: middle;
+}
+
+/* 5. 空状态提示 */
+.custom-playlists-empty-tip {
+    text-align: center;
+    padding: 40px 16px;
+    color: var(--text-secondary, #86868b);
+}
+
+.custom-playlists-empty-tip .empty-icon {
+    font-size: 40px;
+    color: var(--accent-color, #fc3c44);
+    opacity: 0.7;
+    margin-bottom: 12px;
+}
+
+.custom-playlists-empty-tip .empty-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text-primary, #1d1d1f);
+}
+
+body.dark-mode .custom-playlists-empty-tip .empty-title {
+    color: #f5f5f7;
+}
+
+.custom-playlists-empty-tip .empty-desc {
+    font-size: 12.5px;
+    line-height: 1.5;
+    max-width: 320px;
+    margin: 0 auto;
+}
+
+/* 6. “添加到歌单”轻量弹窗 */
+.cpl-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+}
+
+.cpl-modal-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.cpl-modal-card {
+    width: 90%;
+    max-width: 400px;
+    max-height: 80vh;
+    background: var(--surface-solid, #ffffff);
+    border-radius: 20px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+    animation: cplModalPop 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+body.dark-mode .cpl-modal-card {
+    background: #1c1c1e;
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes cplModalPop {
+    from { transform: scale(0.92); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.cpl-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+}
+
+.cpl-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary, #1d1d1f);
+}
+
+body.dark-mode .cpl-modal-header h3 {
+    color: #f5f5f7;
+}
+
+.cpl-modal-close-btn {
+    background: rgba(0, 0, 0, 0.05);
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary, #86868b);
+    transition: all 0.18s ease;
+}
+
+body.dark-mode .cpl-modal-close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #f5f5f7;
+}
+
+.cpl-modal-close-btn:hover {
+    color: #ff3b30;
+    background: rgba(255, 59, 48, 0.15);
+}
+
+.cpl-modal-song-preview {
+    padding: 10px 18px;
+    background: var(--surface-secondary, rgba(0, 0, 0, 0.02));
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.04));
+}
+
+body.dark-mode .cpl-modal-song-preview {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.cpl-modal-song-preview .preview-song-name {
+    font-weight: 600;
+    color: var(--accent-color, #fc3c44);
+}
+
+.cpl-modal-song-preview .preview-song-artist {
+    color: var(--text-secondary, #86868b);
+}
+
+.cpl-quick-create-row {
+    display: flex;
+    gap: 8px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+}
+
+.cpl-quick-create-input {
+    flex: 1;
+    padding: 7px 12px;
+    font-size: 13px;
+    border-radius: 9px;
+    border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.12));
+    background: var(--surface-solid, #ffffff);
+    color: var(--text-primary, #1d1d1f);
+    outline: none;
+}
+
+body.dark-mode .cpl-quick-create-input {
+    background: #2c2c2e;
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #f5f5f7;
+}
+
+.cpl-quick-create-input:focus {
+    border-color: var(--accent-color, #fc3c44);
+}
+
+.cpl-quick-create-btn {
+    padding: 7px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 9px;
+    border: none;
+    background: var(--accent-color, #fc3c44);
+    color: #fff;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.18s ease;
+}
+
+.cpl-quick-create-btn:hover {
+    opacity: 0.9;
+}
+
+.cpl-select-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 280px;
+}
+
+.cpl-select-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.cpl-select-item:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+body.dark-mode .cpl-select-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.cpl-select-item.already-added {
+    opacity: 0.65;
+    cursor: default;
+}
+
+.cpl-select-item-icon {
+    font-size: 18px;
+    color: var(--accent-color, #fc3c44);
+}
+
+.cpl-select-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.cpl-select-item-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-primary, #1d1d1f);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body.dark-mode .cpl-select-item-name {
+    color: #f5f5f7;
+}
+
+.cpl-select-item-count {
+    font-size: 11.5px;
+    color: var(--text-secondary, #86868b);
+    margin-top: 2px;
+}
+
+.status-add-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 7px;
+    border: 1px solid var(--accent-color, #fc3c44);
+    background: transparent;
+    color: var(--accent-color, #fc3c44);
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.status-add-btn:hover {
+    background: var(--accent-color, #fc3c44);
+    color: #fff;
+}
+
+.status-added {
+    font-size: 11.5px;
+    color: #34c759;
+    font-weight: 500;
+}
+
+.cpl-modal-empty-tip {
+    text-align: center;
+    padding: 24px 12px;
+    font-size: 12.5px;
+    color: var(--text-secondary, #86868b);
+}
