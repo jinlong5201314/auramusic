@@ -68,6 +68,7 @@ async function proxyUniversalTarget(targetUrl: string, request: Request): Promis
       "User-Agent": request.headers.get("User-Agent") ?? "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       "Accept": request.headers.get("Accept") ?? "*/*",
     },
+    signal: AbortSignal.timeout(10000),
   };
 
   // 针对酷我等音源特殊处理防盗链 Referer
@@ -303,6 +304,7 @@ async function checkAudioUrlValid(audioUrl: string, minSizeBytes: number = 1.8 *
     const resp = await fetch(audioUrl, {
       method: "HEAD",
       headers: { "User-Agent": "Mozilla/5.0" },
+      signal: AbortSignal.timeout(3500),
     });
     if (!resp.ok) return false;
     const ct = (resp.headers.get("Content-Type") || "").toLowerCase();
@@ -352,13 +354,18 @@ async function findPlayableNeteaseTrack(name: string, artist: string, targetDura
 
     for (const q of queries) {
       if (!q) continue;
-      const sUrl = `${apiBaseUrl}?types=search&source=netease&name=${encodeURIComponent(q)}&count=10`;
-      const sResp = await fetch(sUrl, { headers: { "User-Agent": "Meting/1.5.0" } });
+      const sUrl = `${apiBaseUrl}?types=search&source=netease&name=${encodeURIComponent(q)}&count=4`;
+      let sResp: Response;
+      try {
+        sResp = await fetch(sUrl, { headers: { "User-Agent": "Meting/1.5.0" }, signal: AbortSignal.timeout(3500) });
+      } catch {
+        continue;
+      }
       if (!sResp.ok) continue;
       const songs: any = await sResp.json();
       if (!Array.isArray(songs) || songs.length === 0) continue;
 
-      for (const song of songs) {
+      for (const song of songs.slice(0, 2)) {
         const sid = song.id;
         if (!sid) continue;
 
@@ -375,7 +382,7 @@ async function findPlayableNeteaseTrack(name: string, artist: string, targetDura
         if (targetDuration > 0) {
           try {
             const detailUrl = `https://music.163.com/api/song/detail?ids=[${sid}]`;
-            const dResp = await fetch(detailUrl, { headers: { Referer: "https://music.163.com", "User-Agent": "Mozilla/5.0" } });
+            const dResp = await fetch(detailUrl, { headers: { Referer: "https://music.163.com", "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(2500) });
             if (dResp.ok) {
               const dData: any = await dResp.json();
               const candDurationMs = dData?.songs?.[0]?.duration || dData?.songs?.[0]?.dt || 0;
@@ -389,7 +396,12 @@ async function findPlayableNeteaseTrack(name: string, artist: string, targetDura
         }
 
         const pUrl = `${apiBaseUrl}?types=url&source=netease&id=${sid}&br=320`;
-        const pResp = await fetch(pUrl, { headers: { "User-Agent": "Meting/1.5.0" } });
+        let pResp: Response;
+        try {
+          pResp = await fetch(pUrl, { headers: { "User-Agent": "Meting/1.5.0" }, signal: AbortSignal.timeout(3500) });
+        } catch {
+          continue;
+        }
         if (!pResp.ok) continue;
         const pData: any = await pResp.json();
         const realUrl = pData?.url;
@@ -410,18 +422,28 @@ async function fetchKugouDirectFallback(name: string, artist: string, targetDura
   try {
     const cleanName = name.replace(/\([^)]*\)|（[^）]*）/g, "").trim();
     const kw = `${cleanName} ${artist}`.trim();
-    const searchUrl = `http://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=${encodeURIComponent(kw)}&page=1&pagesize=6&showtype=1`;
-    const sResp = await fetch(searchUrl, { headers: { "User-Agent": "Mozilla/5.0 (iPhone)" } });
+    const searchUrl = `http://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=${encodeURIComponent(kw)}&page=1&pagesize=4&showtype=1`;
+    let sResp: Response;
+    try {
+      sResp = await fetch(searchUrl, { headers: { "User-Agent": "Mozilla/5.0 (iPhone)" }, signal: AbortSignal.timeout(3000) });
+    } catch {
+      return null;
+    }
     if (!sResp.ok) return null;
     const sData: any = await sResp.json();
     const list = sData?.data?.info || [];
-    for (const item of list) {
+    for (const item of list.slice(0, 3)) {
       if (artist && !isArtistMatch(artist, item.singername)) continue;
       if (targetDuration > 0 && Math.abs(item.duration - targetDuration) > 30) continue;
       const hash = item["320hash"] || item.sqhash || item.hash;
       if (!hash) continue;
       const playUrl = `http://m.kugou.com/app/i/getSongInfo.php?cmd=playInfo&hash=${hash}`;
-      const pResp = await fetch(playUrl, { headers: { "User-Agent": "Mozilla/5.0 (iPhone)" } });
+      let pResp: Response;
+      try {
+        pResp = await fetch(playUrl, { headers: { "User-Agent": "Mozilla/5.0 (iPhone)" }, signal: AbortSignal.timeout(3000) });
+      } catch {
+        continue;
+      }
       if (!pResp.ok) continue;
       const pData: any = await pResp.json();
       if (pData?.url && pData.fileSize > 2000000) {

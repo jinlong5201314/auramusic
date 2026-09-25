@@ -374,6 +374,8 @@ class LxMusicPluginEngine {
         this.scriptInfo = meta;
         this.status = "ready";
         this.saveSourcesToStorage();
+        // 自动触发一次后台健康度探测
+        this.probeSource(newSource.id).catch(e => console.warn("[LX Sandbox] 自动探测异常:", e));
         return newSource;
     }
 
@@ -396,6 +398,189 @@ class LxMusicPluginEngine {
             }
         }
         this.saveSourcesToStorage();
+    }
+
+    /**
+     * 对指定音源进行连通度与出链深度探测
+     */
+    async probeSource(sourceId) {
+        const target = this.sources.find(s => s.id === sourceId);
+        if (!target) return { ok: false, message: "音源未找到" };
+
+        const startTime = performance.now();
+        target.probeStatus = "probing";
+
+        try {
+            // 1. 测试脚本拉取 (带超时控制)
+            let code = "";
+            try {
+                code = await this.fetchScriptSource(target.url);
+            } catch (fetchErr) {
+                const latencyMs = Math.round(performance.now() - startTime);
+                target.probeResult = { ok: false, latencyMs, message: `拉取失败: ${fetchErr.message || "无法连接"}`, time: Date.now() };
+                target.probeStatus = "done";
+                this.saveSourcesToStorage();
+                return target.probeResult;
+            }
+
+            if (!code || code.trim().length < 50) {
+                const latencyMs = Math.round(performance.now() - startTime);
+                target.probeResult = { ok: false, latencyMs, message: "脚本内容为空", time: Date.now() };
+                target.probeStatus = "done";
+                this.saveSourcesToStorage();
+                return target.probeResult;
+            }
+
+            // 更新元信息
+            const meta = this.parseMetadata(code);
+            target.name = meta.name || target.name;
+            target.version = meta.version || target.version;
+
+            // 2. 独立沙箱隔离执行，捕获其 request 回调
+            let probeHandler = null;
+            let scriptInitError = null;
+
+            const probeHost = {
+                EVENT_NAMES: { request: "request", inited: "inited", updateAlert: "updateAlert" },
+                version: "2.8.0",
+                env: "desktop",
+                currentScriptInfo: meta,
+                on: (eventName, handler) => {
+                    if (eventName === "request") probeHandler = handler;
+                },
+                send: () => {},
+                request: (url, options, callback) => {
+                    this.httpFetch(url, { ...(options || {}), timeout: 5000 })
+                        .then(res => {
+                            if (typeof callback === "function") callback(null, res);
+                        })
+                        .catch(err => {
+                            if (typeof callback === "function") callback(err, null);
+                        });
+                },
+                utils: {
+                    buffer: {
+                        from: (d) => new Uint8Array(typeof d === "string" ? new TextEncoder().encode(d) : d),
+                        bufToString: (b, enc = "utf-8") => new TextDecoder(enc).decode(b)
+                    },
+                    crypto: {
+                        md5: (str) => typeof window.CryptoJS !== "undefined" ? window.CryptoJS.MD5(str).toString() : ""
+                    }
+                }
+            };
+
+            const prevWindowLx = window.lx;
+            const prevGlobalLx = globalThis.lx;
+            window.lx = probeHost;
+            globalThis.lx = probeHost;
+            try {
+                const runner = new Function(code);
+                runner();
+            } catch (runErr) {
+                scriptInitError = runErr.message;
+            } finally {
+                window.lx = prevWindowLx;
+                globalThis.lx = prevGlobalLx;
+            }
+
+            if (typeof probeHandler !== "function") {
+                const latencyMs = Math.round(performance.now() - startTime);
+                const errMsg = scriptInitError ? `脚本报错: ${scriptInitError}` : "未注册解析器";
+                target.probeResult = { ok: false, latencyMs, message: errMsg, time: Date.now() };
+                target.probeStatus = "done";
+                this.saveSourcesToStorage();
+                return target.probeResult;
+            }
+
+            // 3. 模拟请求真实测试曲目 (优先测试网易云，若未出链则测试QQ音乐)
+            const testCandidates = [
+                { source: "wy", info: { type: "128k", musicInfo: { id: "347230", songmid: "347230", name: "海阔天空", singer: "Beyond", hash: "e4fa35c89f0eb8900893611ca8c4af79" } } },
+                { source: "tx", info: { type: "128k", musicInfo: { id: "0039MnYb0qxYAc", songmid: "0039MnYb0qxYAc", name: "晴天", singer: "周杰伦" } } }
+            ];
+
+            let resolvedUrl = null;
+            let lastErr = null;
+
+            for (const cand of testCandidates) {
+                try {
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error("接口响应超时 (5.5s)")), 5500)
+                    );
+                    const callPromise = Promise.resolve().then(() => probeHandler({
+                        action: "musicUrl",
+                        source: cand.source,
+                        info: cand.info
+                    }));
+
+                    const res = await Promise.race([callPromise, timeoutPromise]);
+                    if (res && typeof res === "string" && res.startsWith("http")) {
+                        if (!res.includes("error") && !res.includes("502") && !res.includes("nxinxz") && !res.includes("175.27.166.236")) {
+                            resolvedUrl = res;
+                            break;
+                        } else {
+                            lastErr = "返回失效报错流";
+                        }
+                    } else if (res && typeof res === "object" && res.url && typeof res.url === "string") {
+                        resolvedUrl = res.url;
+                        break;
+                    }
+                } catch (cErr) {
+                    lastErr = cErr.message;
+                }
+            }
+
+            const latencyMs = Math.round(performance.now() - startTime);
+
+            if (resolvedUrl) {
+                target.probeResult = {
+                    ok: true,
+                    latencyMs,
+                    message: `${latencyMs}ms 正常`,
+                    audioUrl: resolvedUrl,
+                    time: Date.now()
+                };
+            } else {
+                target.probeResult = {
+                    ok: false,
+                    latencyMs,
+                    message: lastErr || "未出链",
+                    time: Date.now()
+                };
+            }
+
+            target.probeStatus = "done";
+            this.saveSourcesToStorage();
+            return target.probeResult;
+        } catch (globalErr) {
+            const latencyMs = Math.round(performance.now() - startTime);
+            target.probeResult = {
+                ok: false,
+                latencyMs,
+                message: globalErr.message || "探测异常",
+                time: Date.now()
+            };
+            target.probeStatus = "done";
+            this.saveSourcesToStorage();
+            return target.probeResult;
+        }
+    }
+
+    /**
+     * 批量并发/串行体检全部音源
+     */
+    async probeAllSources(onProgress) {
+        const results = [];
+        for (const src of this.sources) {
+            if (typeof onProgress === "function") {
+                onProgress(src, { status: "probing" });
+            }
+            const res = await this.probeSource(src.id);
+            if (typeof onProgress === "function") {
+                onProgress(src, { status: "done", result: res });
+            }
+            results.push({ id: src.id, result: res });
+        }
+        return results;
     }
 
     /**
@@ -527,12 +712,21 @@ class LxMusicPluginEngine {
                     }
                 }));
 
+                const resolveStart = performance.now();
                 const resultUrl = await Promise.race([execPromise, timeoutPromise]);
                 const validUrl = await isAudioUrlValid(resultUrl);
                 if (validUrl) {
-                    console.log(`[LX Sandbox] 音源【${currentSrc.name}】解析成功: ${validUrl.slice(0, 60)}...`);
+                    const latencyMs = Math.round(performance.now() - resolveStart);
+                    console.log(`[LX Sandbox] 音源【${currentSrc.name}】解析成功 (${latencyMs}ms): ${validUrl.slice(0, 60)}...`);
                     this.lastResolvedSourceName = srcDisplayName;
                     delete currentSrc._failCooldown;
+                    currentSrc.probeResult = {
+                        ok: true,
+                        latencyMs,
+                        message: `${latencyMs}ms 正常`,
+                        time: Date.now()
+                    };
+                    this.saveSourcesToStorage();
                     // 恢复原本选中的默认源状态标识
                     if (isFallbackSrc && originalActiveId) this.activeSourceId = originalActiveId;
                     return validUrl;

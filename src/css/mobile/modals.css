@@ -111,3 +111,13 @@ body.mobile-view .lx-source-item {
 body.mobile-view .lx-source-url-text {
     max-width: 180px;
 }
+
+body.mobile-view .lx-source-list-header {
+    margin-top: 10px;
+    margin-bottom: 6px;
+}
+
+body.mobile-view .lx-probe-badge {
+    font-size: 9.5px;
+    padding: 1px 5px;
+}

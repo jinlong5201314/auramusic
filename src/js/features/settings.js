@@ -111,6 +111,21 @@ export function renderLxSourceList(dom) {
         const isActive = src.id === lxPluginEngine.activeSourceId;
         const activeClass = isActive ? "is-active" : "";
         const checkedAttr = isActive ? "checked" : "";
+
+        // 探测状态徽标
+        let probeBadge = "";
+        if (src.probeStatus === "probing") {
+            probeBadge = `<span class="lx-probe-badge is-probing"><span class="probe-spinner"></span> 测速中...</span>`;
+        } else if (src.probeResult) {
+            if (src.probeResult.ok) {
+                probeBadge = `<span class="lx-probe-badge is-ok" title="探测时间: ${new Date(src.probeResult.time).toLocaleTimeString()}">🟢 ${src.probeResult.latencyMs}ms 正常</span>`;
+            } else {
+                probeBadge = `<span class="lx-probe-badge is-err" title="${src.probeResult.message || '异常'}">🔴 ${src.probeResult.message || '失效'}</span>`;
+            }
+        } else {
+            probeBadge = `<span class="lx-probe-badge is-idle">⚪ 未探测</span>`;
+        }
+
         return `
             <div class="lx-source-item ${activeClass}" data-id="${src.id}">
                 <div class="lx-source-main" data-id="${src.id}">
@@ -119,11 +134,15 @@ export function renderLxSourceList(dom) {
                         <div class="lx-source-title-row">
                             <span class="lx-source-title">${src.name || "自定义音源"}</span>
                             <span class="lx-source-ver-tag">v${src.version || "1.0.0"}</span>
+                            ${probeBadge}
                         </div>
                         <span class="lx-source-url-text" title="${src.url}">${src.url}</span>
                     </div>
                 </div>
                 <div class="lx-source-actions">
+                    <button type="button" class="lx-source-probe-btn" data-id="${src.id}" title="探测健康度与测速">
+                        <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    </button>
                     <button type="button" class="lx-source-del-btn" data-id="${src.id}" title="删除此音源">
                         <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
                     </button>
@@ -142,15 +161,43 @@ export function renderLxSourceList(dom) {
                 safeSetLocalStorage("lxMusicActiveSourceId", id);
                 const ok = await lxPluginEngine.activateSource(id);
                 renderLxSourceList(dom);
-            // 立即向云端 D1 增量同步音源列表与状态
-            if (typeof persistStorageItems === "function") {
-                persistStorageItems({
-                    lxMusicSourcesList: JSON.stringify(lxPluginEngine.sources),
-                    lxMusicActiveSourceId: lxPluginEngine.activeSourceId,
-                    lxMusicSourceEnabled: String(lxPluginEngine.isEnabled)
-                });
+                // 立即向云端 D1 增量同步音源列表与状态
+                if (typeof persistStorageItems === "function") {
+                    persistStorageItems({
+                        lxMusicSourcesList: JSON.stringify(lxPluginEngine.sources),
+                        lxMusicActiveSourceId: lxPluginEngine.activeSourceId,
+                        lxMusicSourceEnabled: String(lxPluginEngine.isEnabled)
+                    });
+                }
+                showNotification(ok ? `已切换生效音源: 【${lxPluginEngine.scriptInfo?.name || "自定义音源"}】` : `音源加载异常: ${lxPluginEngine.lastError}`, ok ? "success" : "error", dom);
             }
-            showNotification(ok ? `已切换生效音源: 【${lxPluginEngine.scriptInfo?.name || "自定义音源"}】` : `音源加载异常: ${lxPluginEngine.lastError}`, ok ? "success" : "error", dom);
+        });
+    });
+
+    // 绑定单音源探测测速按钮事件
+    dom.lxSourceList.querySelectorAll(".lx-source-probe-btn").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute("data-id");
+            if (!id) return;
+            const targetSrc = lxPluginEngine.sources.find(s => s.id === id);
+            if (targetSrc) targetSrc.probeStatus = "probing";
+            btn.disabled = true;
+            renderLxSourceList(dom);
+            showNotification(`正在探测【${targetSrc?.name || "音源"}】可用性...`, "info", dom);
+
+            try {
+                const res = await lxPluginEngine.probeSource(id);
+                if (res.ok) {
+                    showNotification(`音源【${targetSrc?.name || "音源"}】健康度良好: ${res.latencyMs}ms`, "success", dom);
+                } else {
+                    showNotification(`音源【${targetSrc?.name || "音源"}】异常: ${res.message}`, "warn", dom);
+                }
+            } catch (err) {
+                showNotification(`探测失败: ${err.message}`, "error", dom);
+            } finally {
+                if (targetSrc) targetSrc.probeStatus = "done";
+                renderLxSourceList(dom);
             }
         });
     });
@@ -174,6 +221,39 @@ export function renderLxSourceList(dom) {
             }
         });
     });
+
+    // 绑定一键体检全部音源事件
+    const probeAllBtn = document.getElementById("lxSourceProbeAllBtn");
+    if (probeAllBtn && !probeAllBtn.__boundProbeAll) {
+        probeAllBtn.__boundProbeAll = true;
+        probeAllBtn.addEventListener("click", async () => {
+            const sources = lxPluginEngine.sources || [];
+            if (sources.length === 0) {
+                showNotification("未配置任何音源可供体检", "info", dom);
+                return;
+            }
+            probeAllBtn.disabled = true;
+            const origHtml = probeAllBtn.innerHTML;
+            probeAllBtn.innerHTML = '<span class="loader" style="width:11px;height:11px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:4px;"></span>体检中...';
+            showNotification("正在并发体检列表中所有音源...", "info", dom);
+
+            try {
+                await lxPluginEngine.probeAllSources((src, state) => {
+                    src.probeStatus = state.status;
+                    renderLxSourceList(dom);
+                });
+                const okCount = sources.filter(s => s.probeResult?.ok).length;
+                showNotification(`音源体检完成: ${okCount}/${sources.length} 个音源正常`, okCount > 0 ? "success" : "warn", dom);
+            } catch (err) {
+                showNotification(`体检执行异常: ${err.message}`, "error", dom);
+            } finally {
+                sources.forEach(s => s.probeStatus = "done");
+                probeAllBtn.disabled = false;
+                probeAllBtn.innerHTML = origHtml;
+                renderLxSourceList(dom);
+            }
+        });
+    }
 }
 
 export function closeSettingsModal(dom) {
