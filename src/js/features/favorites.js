@@ -165,13 +165,18 @@ export function renderFavorites(state, dom) {
             : (song.artist || "未知艺术家");
         const isCurrent = state.currentList === "favorite" && index === state.currentFavoriteIndex;
         const songKey = getSongKey(song) || `favorite-${index}`;
+        const hasCachedUrl = Boolean(song.audioUrl && song.audioUrl.startsWith("http"));
         return `
         <div class="playlist-item${isCurrent ? " current" : ""}" data-index="${index}" role="button" tabindex="0" aria-label="播放 ${song.name}" data-favorite-key="${songKey}">
             <div class="playlist-item-info">
                 <span class="playlist-item-title">${song.name}</span>
                 <span class="playlist-item-artist"> - ${artistValue}</span>
+                ${hasCachedUrl ? '<span class="d1-cached-pill" title="已记录高保真直链至 D1 数据库，秒开免解析">D1秒开</span>' : ''}
             </div>
             <div class="playlist-item-actions" role="toolbar" aria-label="歌曲操作">
+                <button class="favorite-item-action favorite-item-action--refresh" type="button" data-favorite-action="refresh-song" data-index="${index}" title="清理缓存并重新获取" aria-label="清理缓存并重新获取">
+                    <i class="fas fa-arrows-rotate"></i>
+                </button>
                 <button class="favorite-item-action favorite-item-action--cpl" type="button" data-favorite-action="add-to-cpl" data-index="${index}" title="添加到歌单" aria-label="添加到歌单">
                     <i class="fas fa-folder-plus"></i>
                 </button>

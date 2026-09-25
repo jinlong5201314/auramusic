@@ -308,6 +308,9 @@ export function renderCustomPlaylistDetail(playlist, state, dom, callbacks = {})
                 ${hasCachedUrl ? '<span class="d1-cached-pill" title="已记录高保真直链至 D1 数据库，秒开免解析">D1秒开</span>' : ''}
             </div>
             <div class="playlist-item-actions" role="toolbar" aria-label="歌曲操作">
+                <button class="playlist-item-action playlist-item-action--refresh" type="button" data-cpl-action="refresh-song" data-index="${index}" title="清理缓存并重新获取" aria-label="清理缓存并重新获取">
+                    <i class="fas fa-arrows-rotate"></i>
+                </button>
                 <button class="playlist-item-favorite favorite-toggle" type="button" data-cpl-action="toggle-favorite" data-index="${index}" title="收藏" aria-label="收藏">
                     <i class="fa-regular fa-heart"></i>
                 </button>
@@ -414,6 +417,13 @@ export function initCustomPlaylistsUI(state, dom, callbacks = {}) {
             const activePl = getPlaylistById(state.activeCustomPlaylistDetailId, state);
             if (!activePl || !activePl.songs[index]) return;
             const targetSong = activePl.songs[index];
+
+            if (action === "refresh-song") {
+                if (typeof callbacks.refreshSongCache === "function") {
+                    callbacks.refreshSongCache(targetSong);
+                }
+                return;
+            }
 
             if (action === "toggle-favorite") {
                 if (typeof callbacks.toggleFavorite === "function") {

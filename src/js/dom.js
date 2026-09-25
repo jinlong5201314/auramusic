@@ -36,6 +36,8 @@ export const dom = {
     albumCover: document.getElementById("albumCover"),
     currentSongTitle: document.getElementById("currentSongTitle"),
     currentSongArtist: document.getElementById("currentSongArtist"),
+    currentAddToCplBtn: document.getElementById("currentAddToCplBtn"),
+    currentRefreshSongBtn: document.getElementById("currentRefreshSongBtn"),
     resolveStatusPill: document.getElementById("resolveStatusPill"),
     resolveDot: document.getElementById("resolveDot"),
     resolveText: document.getElementById("resolveText"),

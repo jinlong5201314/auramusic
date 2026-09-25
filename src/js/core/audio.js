@@ -1078,3 +1078,124 @@ export async function preloadNextSong(state, debugLogger = null) {
     }
 }
 
+/**
+ * 清除单一歌曲在本地内存缓存、播放列表、收藏列表及所有自建歌单中的直链与缓存
+ * 并同步持久化到 Cloudflare D1 / LocalStorage
+ */
+export function clearSongAudioCache(song, state, callbacks = {}) {
+    if (!song) return false;
+    const targetKey = getSongKey(song);
+    const targetId = song.id ? String(song.id) : null;
+    const targetName = song.name ? song.name.trim() : null;
+
+    // 1. 清除前端短期内存直链缓存 (audioUrlMemoryCache)
+    if (audioUrlMemoryCache && audioUrlMemoryCache.size > 0) {
+        for (const key of Array.from(audioUrlMemoryCache.keys())) {
+            if (targetId && key.includes(`_${targetId}_`)) {
+                audioUrlMemoryCache.delete(key);
+            } else if (targetKey && key.includes(targetKey)) {
+                audioUrlMemoryCache.delete(key);
+            }
+        }
+    }
+
+    // 2. 清除目标歌曲自身对象的 audioUrl
+    if (song.audioUrl) delete song.audioUrl;
+
+    // 3. 清除当前正在播放对象 (state.currentSong)
+    if (state && state.currentSong) {
+        const curKey = getSongKey(state.currentSong);
+        const curId = state.currentSong.id ? String(state.currentSong.id) : null;
+        if ((curKey && curKey === targetKey) || (curId && curId === targetId) || (targetName && state.currentSong.name === targetName)) {
+            if (state.currentSong.audioUrl) delete state.currentSong.audioUrl;
+            state.currentAudioUrl = null;
+        }
+    }
+
+    // 4. 清除播放列表中匹配歌曲的 audioUrl
+    if (state && Array.isArray(state.playlistSongs)) {
+        let plChanged = false;
+        state.playlistSongs.forEach(item => {
+            const k = getSongKey(item);
+            const id = item.id ? String(item.id) : null;
+            if ((k && k === targetKey) || (id && id === targetId) || (targetName && item.name === targetName)) {
+                if (item.audioUrl) {
+                    delete item.audioUrl;
+                    plChanged = true;
+                }
+            }
+        });
+        if (plChanged && typeof callbacks.savePlayerState === "function") {
+            callbacks.savePlayerState();
+        }
+    }
+
+    // 5. 清除收藏夹中匹配歌曲的 audioUrl 并同步到 D1
+    if (state && Array.isArray(state.favoriteSongs)) {
+        let favChanged = false;
+        state.favoriteSongs.forEach(item => {
+            const k = getSongKey(item);
+            const id = item.id ? String(item.id) : null;
+            if ((k && k === targetKey) || (id && id === targetId) || (targetName && item.name === targetName)) {
+                if (item.audioUrl) {
+                    delete item.audioUrl;
+                    favChanged = true;
+                }
+            }
+        });
+        if (favChanged && typeof callbacks.saveFavoriteState === "function") {
+            callbacks.saveFavoriteState();
+        }
+    }
+
+    // 6. 清除所有自定义歌单中匹配歌曲的 audioUrl 并同步到 D1
+    if (state && Array.isArray(state.customPlaylists)) {
+        let cplChanged = false;
+        state.customPlaylists.forEach(pl => {
+            if (Array.isArray(pl.songs)) {
+                pl.songs.forEach(item => {
+                    const k = getSongKey(item);
+                    const id = item.id ? String(item.id) : null;
+                    if ((k && k === targetKey) || (id && id === targetId) || (targetName && item.name === targetName)) {
+                        if (item.audioUrl) {
+                            delete item.audioUrl;
+                            cplChanged = true;
+                        }
+                    }
+                });
+            }
+        });
+        if (cplChanged && typeof callbacks.saveCustomPlaylists === "function") {
+            callbacks.saveCustomPlaylists();
+        }
+    }
+
+    return true;
+}
+
+/**
+ * 清除单一歌曲缓存并立即重新发起解析和获取播放
+ */
+export async function clearSongCacheAndReacquire(song, state, dom, callbacks = {}, debugLogger = null) {
+    if (!song) return;
+    const songName = song.name || "当前歌曲";
+
+    // 执行全链路缓存清除（内存 + D1 + 本地列表）
+    clearSongAudioCache(song, state, callbacks);
+
+    // 提示通知
+    showNotification(`已清理《${songName}》D1与本地缓存，正在重新获取...`, "info", dom);
+
+    // 更新界面渲染（移除已记录直链状态徽标）
+    if (typeof callbacks.renderFavorites === "function") callbacks.renderFavorites();
+    if (typeof callbacks.renderCustomPlaylists === "function") callbacks.renderCustomPlaylists();
+    if (typeof callbacks.renderPlaylist === "function") callbacks.renderPlaylist();
+
+    // 强制无缓存重新解析并开始播放
+    try {
+        await playSong(song, { isRetry: true, autoplay: true }, state, dom, callbacks, debugLogger);
+    } catch (err) {
+        showNotification(`重新获取《${songName}》失败: ${err.message || '网络错误'}`, "error", dom);
+    }
+}
+

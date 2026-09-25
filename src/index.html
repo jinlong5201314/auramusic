@@ -15,8 +15,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=4.1.2">
-    <script src="js/i18n.js?v=4.1.2"></script>
+    <link rel="stylesheet" href="css/style.css?v=4.2.0">
+    <script src="js/i18n.js?v=4.2.0"></script>
     <script>
         (function () {
             const ua = navigator.userAgent || "";
@@ -45,7 +45,7 @@
             }
             const link = document.createElement("link");
             link.rel = "stylesheet";
-            link.href = "css/mobile.css?v=4.1.2";
+            link.href = "css/mobile.css?v=4.2.0";
             link.id = "mobileStylesheet";
             document.head.appendChild(link);
             let stableViewportHeight = window.innerHeight;
@@ -395,6 +395,15 @@
                             title="将当前播放歌曲添加到歌单"
                         >
                             <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14m-7-7h14"/></svg>
+                        </button>
+                        <button
+                            class="current-refresh-btn"
+                            id="currentRefreshSongBtn"
+                            type="button"
+                            aria-label="清理缓存并重新获取"
+                            title="清理当前歌曲的 D1 与本地缓存并重新获取"
+                        >
+                            <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
                         </button>
                     </div>
                     <div class="current-song-meta-row">
@@ -1024,7 +1033,7 @@
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script type="module" src="js/app.js?v=4.1.2"></script>
+<script type="module" src="js/app.js?v=4.2.0"></script>
 <script>
     (function () {
         const ua = navigator.userAgent || "";
@@ -1040,7 +1049,7 @@
             }
             const mobileScript = document.createElement('script');
             mobileScript.type = 'module';
-            mobileScript.src = 'js/mobile.js?v=4.1.2';
+            mobileScript.src = 'js/mobile.js?v=4.2.0';
             document.body.appendChild(mobileScript);
         }
     })();

@@ -122,7 +122,9 @@ import {
     formatTime,
     resetPlayerToIdle,
     cancelPendingPlayback,
-    preloadNextSong
+    preloadNextSong,
+    clearSongAudioCache,
+    clearSongCacheAndReacquire
 } from "./core/audio.js";
 import { initMediaSession } from "./core/media-session.js";
 import { initSquare, closePlaylistDetailModal } from "./features/square.js";
@@ -463,6 +465,31 @@ function getPlaylistCallbacks() {
     };
 }
 
+function handleRefreshSongCache(song, triggerBtn = null) {
+    if (!song) return;
+    if (triggerBtn && typeof triggerBtn.animate === "function") {
+        triggerBtn.animate([
+            { transform: "rotate(0deg)" },
+            { transform: "rotate(360deg)" }
+        ], { duration: 600, easing: "cubic-bezier(0.4, 0, 0.2, 1)" });
+    }
+    clearSongCacheAndReacquire(song, state, dom, {
+        savePlayerState,
+        saveFavoriteState,
+        saveCustomPlaylists,
+        renderFavorites: () => renderFavorites(state, dom),
+        renderPlaylist: () => renderPlaylist(state, dom, getPlaylistCallbacks()),
+        renderCustomPlaylists: () => renderCustomPlaylists(state, dom, {
+            saveCustomPlaylists,
+            toggleFavorite: (s) => toggleFavorite(s, state, dom, { saveFavoriteState }),
+            savePlayerState,
+            playSong: (s, opts) => playSong(s, opts, state, dom, getAudioCallbacks(), debugLog),
+            refreshSongCache: (s, btn) => handleRefreshSongCache(s, btn)
+        }),
+        ...getAudioCallbacks()
+    }, debugLog);
+}
+
 function showQualityMenu(event, index, type) {
     event.stopPropagation();
 
@@ -723,6 +750,17 @@ function setupEventHandlers() {
         currentAddToCplBtn.addEventListener("click", () => {
             if (!state.currentSong) return;
             openAddToPlaylistModal(state.currentSong, state, dom, { saveCustomPlaylists });
+        });
+    }
+
+    const currentRefreshSongBtn = dom.currentRefreshSongBtn || document.getElementById("currentRefreshSongBtn");
+    if (currentRefreshSongBtn) {
+        currentRefreshSongBtn.addEventListener("click", () => {
+            if (!state.currentSong) {
+                showNotification("当前暂未播放歌曲", "warning", dom);
+                return;
+            }
+            handleRefreshSongCache(state.currentSong, currentRefreshSongBtn);
         });
     }
 
@@ -1014,13 +1052,20 @@ function setupEventHandlers() {
 
             const index = Number(item.dataset.index);
             const actionContainer = e.target.closest(".playlist-item-actions");
+            const refreshBtn = e.target.closest(".playlist-item-refresh");
             const removeBtn = e.target.closest(".playlist-item-remove");
             const favBtn = e.target.closest(".playlist-item-favorite");
             const dlBtn = e.target.closest(".playlist-item-download");
 
             // 1. 若点击命中操作容器槽或具体某个按钮
-            if (actionContainer || removeBtn || favBtn || dlBtn) {
+            if (actionContainer || refreshBtn || removeBtn || favBtn || dlBtn) {
                 e.stopPropagation();
+
+                if (refreshBtn) {
+                    const song = state.playlistSongs[index];
+                    if (song) handleRefreshSongCache(song, refreshBtn);
+                    return;
+                }
 
                 if (removeBtn) {
                     removeFromPlaylist(index, state, dom, getPlaylistCallbacks());
@@ -1069,14 +1114,21 @@ function setupEventHandlers() {
 
             const index = Number(item.dataset.index);
             const actionContainer = e.target.closest(".playlist-item-actions");
+            const refreshBtn = e.target.closest(".favorite-item-action--refresh");
             const cplBtn = e.target.closest(".favorite-item-action--cpl");
             const addBtn = e.target.closest(".favorite-item-action--add");
             const removeBtn = e.target.closest(".favorite-item-action--remove");
             const dlBtn = e.target.closest(".favorite-item-action--download");
 
             // 1. 若点击命中操作容器槽或具体某个按钮
-            if (actionContainer || cplBtn || addBtn || removeBtn || dlBtn) {
+            if (actionContainer || refreshBtn || cplBtn || addBtn || removeBtn || dlBtn) {
                 e.stopPropagation();
+
+                if (refreshBtn) {
+                    const song = state.favoriteSongs[index];
+                    if (song) handleRefreshSongCache(song, refreshBtn);
+                    return;
+                }
 
                 if (cplBtn) {
                     const song = state.favoriteSongs[index];
@@ -1763,13 +1815,15 @@ export async function bootstrap() {
         saveCustomPlaylists,
         toggleFavorite: (song) => toggleFavorite(song, state, dom, { saveFavoriteState }),
         savePlayerState,
-        playSong: (song, opts) => playSong(song, opts, state, dom, getAudioCallbacks(), debugLog)
+        playSong: (song, opts) => playSong(song, opts, state, dom, getAudioCallbacks(), debugLog),
+        refreshSongCache: (song, btn) => handleRefreshSongCache(song, btn)
     });
     renderCustomPlaylists(state, dom, {
         saveCustomPlaylists,
         toggleFavorite: (song) => toggleFavorite(song, state, dom, { saveFavoriteState }),
         savePlayerState,
-        playSong: (song, opts) => playSong(song, opts, state, dom, getAudioCallbacks(), debugLog)
+        playSong: (song, opts) => playSong(song, opts, state, dom, getAudioCallbacks(), debugLog),
+        refreshSongCache: (song, btn) => handleRefreshSongCache(song, btn)
     });
 
     // 初始化歌单广场（支持 QQ音乐 等平台分类歌单）
