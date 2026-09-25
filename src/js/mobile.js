@@ -51,12 +51,19 @@ import { bindMobileToolbar } from "./mobile/toolbar.js";
 
         // 2. 抽屉开关与切换绑定
         const mobileQueueToggle = $("mobileQueueToggle");
-        if (mobileQueueToggle) {
-            mobileQueueToggle.addEventListener("click", () => toggleMobilePanel("playlist"));
+        if (mobileQueueToggle && !mobileQueueToggle.__boundMobilePanel) {
+            mobileQueueToggle.__boundMobilePanel = true;
+            mobileQueueToggle.addEventListener("click", (e) => {
+                e.stopPropagation();
+                toggleMobilePanel("playlist");
+            });
         }
         const mobilePanelClose = $("mobilePanelClose");
         if (mobilePanelClose) {
-            mobilePanelClose.addEventListener("click", closeMobilePanel);
+            mobilePanelClose.addEventListener("click", (e) => {
+                e.stopPropagation();
+                closeMobilePanel();
+            });
         }
 
         const plTab = $("mobilePlaylistTab");
@@ -71,6 +78,13 @@ import { bindMobileToolbar } from "./mobile/toolbar.js";
             favTab.addEventListener("click", (e) => {
                 e.stopPropagation();
                 switchMobilePanelTab("favorites");
+            });
+        }
+        const cplTab = $("mobileCustomPlaylistsTab");
+        if (cplTab) {
+            cplTab.addEventListener("click", (e) => {
+                e.stopPropagation();
+                switchMobilePanelTab("customPlaylists");
             });
         }
         const sqTab = $("mobileSquareTab");

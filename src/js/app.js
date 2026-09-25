@@ -733,6 +733,25 @@ function setupEventHandlers() {
     if (dom.shuffleToggleBtn) {
         dom.shuffleToggleBtn.addEventListener("click", () => toggleShuffleMode(state, dom, { savePlayerState, saveFavoriteState }));
     }
+    if (dom.mobileQueueToggle && !dom.mobileQueueToggle.__boundMobilePanel) {
+        dom.mobileQueueToggle.__boundMobilePanel = true;
+        dom.mobileQueueToggle.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (typeof window.AuraMobileBridge?.handlers?.togglePanel === "function") {
+                window.AuraMobileBridge.handlers.togglePanel("playlist");
+            } else if (typeof window.SolaraMobileBridge?.handlers?.togglePanel === "function") {
+                window.SolaraMobileBridge.handlers.togglePanel("playlist");
+            } else if (document.body) {
+                document.body.classList.toggle("mobile-panel-open");
+                const scrim = document.getElementById("mobileOverlayScrim");
+                if (scrim) {
+                    const isOpen = document.body.classList.contains("mobile-panel-open");
+                    scrim.style.opacity = isOpen ? "1" : "0";
+                    scrim.style.pointerEvents = isOpen ? "auto" : "none";
+                }
+            }
+        });
+    }
 
     // 音量与进度条
     const toggleMute = () => {

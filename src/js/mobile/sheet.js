@@ -121,7 +121,11 @@ export function openMobilePanel(view = "playlist") {
     if (panel) {
         requestAnimationFrame(() => {
             const tabsContainer = $("mobilePanelHeader")?.querySelector(".playlist-tabs");
-            const activeTab = targetView === "favorites" ? $("mobileFavoritesTab") : $("mobilePlaylistTab");
+            let activeTab = $("mobilePlaylistTab");
+            if (targetView === "favorites") activeTab = $("mobileFavoritesTab");
+            else if (targetView === "customPlaylists") activeTab = $("mobileCustomPlaylistsTab");
+            else if (targetView === "square") activeTab = $("mobileSquareTab");
+
             const indicator = tabsContainer?.querySelector(".playlist-tabs-indicator");
             if (indicator && activeTab && activeTab.offsetWidth > 0) {
                 indicator.style.transform = `translateX(${activeTab.offsetLeft}px)`;
