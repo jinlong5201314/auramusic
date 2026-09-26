@@ -12,6 +12,7 @@ class LxMusicPluginEngine {
         this.isEnabled = safeGetLocalStorage("lxMusicSourceEnabled") !== "false";
         this.registeredHandler = null;
         this.scriptInfo = null;
+        this.scriptCache = new Map();
         this.status = "idle"; // idle | loading | ready | error
         this.lastError = null;
     }
@@ -262,25 +263,36 @@ class LxMusicPluginEngine {
     }
 
     /**
-     * 辅助下载脚本源码：优先直连，直连遇 CORS 阻断时自动降级走同构代理
+     * 辅助下载脚本源码：内存缓存优先，直连遇 CORS 阻断时自动降级走同构代理
      */
     async fetchScriptSource(url) {
+        if (this.scriptCache && this.scriptCache.has(url)) {
+            return this.scriptCache.get(url);
+        }
+        let text = "";
         try {
             const resp = await fetch(url);
             if (resp.ok) {
-                return await resp.text();
+                text = await resp.text();
             }
         } catch (e) {
             console.warn(`[LX Sandbox] 脚本直连下载失败 (${e.message})，转入同构网关代理下载: ${url}`);
         }
 
-        // 降级走代理接口
-        const proxyUrl = `/proxy?target=${encodeURIComponent(url)}`;
-        const proxyResp = await fetch(proxyUrl);
-        if (!proxyResp.ok) {
-            throw new Error(`脚本下载失败: HTTP ${proxyResp.status}`);
+        if (!text) {
+            // 降级走代理接口
+            const proxyUrl = `/proxy?target=${encodeURIComponent(url)}`;
+            const proxyResp = await fetch(proxyUrl);
+            if (!proxyResp.ok) {
+                throw new Error(`脚本下载失败: HTTP ${proxyResp.status}`);
+            }
+            text = await proxyResp.text();
         }
-        return await proxyResp.text();
+
+        if (text && this.scriptCache) {
+            this.scriptCache.set(url, text);
+        }
+        return text;
     }
 
     /**
@@ -341,6 +353,7 @@ class LxMusicPluginEngine {
         // 检查是否已存在相同 URL
         const existing = this.sources.find(s => s.url === url);
         if (existing) {
+            if (this.scriptCache) this.scriptCache.delete(url);
             await this.activateSource(existing.id);
             return existing;
         }
@@ -386,6 +399,10 @@ class LxMusicPluginEngine {
         const idx = this.sources.findIndex(s => s.id === sourceId);
         if (idx === -1) return;
 
+        const target = this.sources[idx];
+        if (target && target.url && this.scriptCache) {
+            this.scriptCache.delete(target.url);
+        }
         this.sources.splice(idx, 1);
         if (this.activeSourceId === sourceId) {
             if (this.sources.length > 0) {
@@ -513,16 +530,25 @@ class LxMusicPluginEngine {
                     }));
 
                     const res = await Promise.race([callPromise, timeoutPromise]);
+                    const deadPatterns = [
+                        "error", "502", "503", "523", "524",
+                        "nxinxz", "175.27.166.236", "haitangw.cc",
+                        "music-dl.sayqz.com", "88.lxmusic.xn--fiqs8s"
+                    ];
                     if (res && typeof res === "string" && res.startsWith("http")) {
-                        if (!res.includes("error") && !res.includes("502") && !res.includes("nxinxz") && !res.includes("175.27.166.236")) {
+                        if (!deadPatterns.some(p => res.includes(p))) {
                             resolvedUrl = res;
                             break;
                         } else {
-                            lastErr = "返回失效报错流";
+                            lastErr = "返回失效死节点或报错流";
                         }
-                    } else if (res && typeof res === "object" && res.url && typeof res.url === "string") {
-                        resolvedUrl = res.url;
-                        break;
+                    } else if (res && typeof res === "object" && res.url && typeof res.url === "string" && res.url.startsWith("http")) {
+                        if (!deadPatterns.some(p => res.url.includes(p))) {
+                            resolvedUrl = res.url;
+                            break;
+                        } else {
+                            lastErr = "返回失效死节点或报错流";
+                        }
                     }
                 } catch (cErr) {
                     lastErr = cErr.message;
@@ -653,8 +679,16 @@ class LxMusicPluginEngine {
                     targetUrl = targetUrl.replace(/^http:\/\//i, "https://");
                 }
             }
-            // 若为已知返回纯报错 JSON 且无法播放的失效 php 接口（如已下线的 nxinxz、175.27.166.236，或返回 {"code":201,"msg":"error"} 的 haitangw）
-            if (targetUrl.includes(".php?") && (targetUrl.includes("nxinxz") || targetUrl.includes("175.27.166.236") || targetUrl.includes("haitangw.cc"))) {
+            // 过滤已知死节点与返回纯报错 JSON 的失效接口（如 TLS 中断的 sayqz、443 阻断的 88.lxmusic、下线的 nxinxz 等）
+            const deadPatterns = [
+                "music-dl.sayqz.com",
+                "88.lxmusic.xn--fiqs8s",
+                "nxinxz",
+                "175.27.166.236",
+                "haitangw.cc"
+            ];
+            if (deadPatterns.some(pattern => targetUrl.includes(pattern))) {
+                console.warn(`[LX Sandbox] 拦截命中已知死节点/失效接口: ${targetUrl.slice(0, 60)}`);
                 return false;
             }
             return targetUrl;
@@ -676,24 +710,26 @@ class LxMusicPluginEngine {
             const currentSrc = candidateSources[i];
             // 若音源最近连续报错触发熔断冷却，跳过避免重复报错
             if (currentSrc._failCooldown && Date.now() < currentSrc._failCooldown) {
+                console.log(`[LX Failover] 音源【${currentSrc.name}】处于熔断冷却中 (${Math.ceil((currentSrc._failCooldown - Date.now()) / 1000)}s)，自动跳过...`);
                 continue;
             }
 
             const isFallbackSrc = i > 0;
             const srcDisplayName = isFallbackSrc ? `${currentSrc.name || "备用源"}(自动容灾)` : (currentSrc.name || "自定义音源");
 
+            let sourceSuccess = false;
             try {
                 if (isFallbackSrc) {
                     console.log(`[LX Failover] 主源未命中，自动切换备用音源【${currentSrc.name}】进行容灾解析...`);
                     const switched = await this.activateSource(currentSrc.id);
                     if (!switched) {
-                        currentSrc._failCooldown = Date.now() + 120000;
+                        currentSrc._failCooldown = Date.now() + 180000;
                         continue;
                     }
                 }
 
                 if (typeof this.registeredHandler !== "function") {
-                    currentSrc._failCooldown = Date.now() + 120000;
+                    currentSrc._failCooldown = Date.now() + 180000;
                     continue;
                 }
 
@@ -720,6 +756,7 @@ class LxMusicPluginEngine {
                     console.log(`[LX Sandbox] 音源【${currentSrc.name}】解析成功 (${latencyMs}ms): ${validUrl.slice(0, 60)}...`);
                     this.lastResolvedSourceName = srcDisplayName;
                     delete currentSrc._failCooldown;
+                    currentSrc._failCount = 0;
                     currentSrc.probeResult = {
                         ok: true,
                         latencyMs,
@@ -769,6 +806,8 @@ class LxMusicPluginEngine {
                             if (validCrossTx) {
                                 console.log(`[LX Sandbox] 音源【${currentSrc.name}】跨源至【tx】解析成功: ${validCrossTx.slice(0, 60)}...`);
                                 this.lastResolvedSourceName = `${srcDisplayName} (QQ跨源)`;
+                                delete currentSrc._failCooldown;
+                                currentSrc._failCount = 0;
                                 if (isFallbackSrc && originalActiveId) this.activeSourceId = originalActiveId;
                                 return validCrossTx;
                             }
@@ -798,6 +837,8 @@ class LxMusicPluginEngine {
                         if (validCrossUrl) {
                             console.log(`[LX Sandbox] 音源【${currentSrc.name}】跨源至【wy】解析成功: ${validCrossUrl.slice(0, 60)}...`);
                             this.lastResolvedSourceName = `${srcDisplayName} (网易跨源)`;
+                            delete currentSrc._failCooldown;
+                            currentSrc._failCount = 0;
                             if (isFallbackSrc && originalActiveId) this.activeSourceId = originalActiveId;
                             return validCrossUrl;
                         }
@@ -805,6 +846,13 @@ class LxMusicPluginEngine {
                 }
             } catch (err) {
                 console.warn(`[LX Sandbox] 音源【${currentSrc.name}】调度异常:`, err.message);
+            }
+
+            // 若本轮调度未成功出链，累计失败计数；若连续失败达 2 次进入 3 分钟熔断冷却
+            currentSrc._failCount = (currentSrc._failCount || 0) + 1;
+            if (currentSrc._failCount >= 2) {
+                currentSrc._failCooldown = Date.now() + 180000;
+                console.warn(`[LX Failover] 音源【${currentSrc.name}】连续失败 ${currentSrc._failCount} 次，触发 3 分钟熔断冷却`);
             }
         }
 
