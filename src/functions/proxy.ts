@@ -62,12 +62,25 @@ async function proxyUniversalTarget(targetUrl: string, request: Request): Promis
     return new Response("Invalid target URL", { status: 400 });
   }
 
+  const HOP_BY_HOP = new Set([
+    'host', 'connection', 'keep-alive', 'transfer-encoding', 'upgrade',
+    'cookie', 'content-length', 'cf-ray', 'cf-connecting-ip', 'cf-ipcountry',
+    'cf-visitor', 'cdn-loop', 'x-forwarded-for', 'x-forwarded-proto'
+  ]);
+  const forwardedHeaders: Record<string, string> = {
+    "User-Agent": request.headers.get("User-Agent") ?? "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    "Accept": request.headers.get("Accept") ?? "*/*",
+  };
+  request.headers.forEach((value, key) => {
+    const lk = key.toLowerCase();
+    if (!HOP_BY_HOP.has(lk) && value) {
+      forwardedHeaders[key] = value;
+    }
+  });
+
   const init: RequestInit = {
     method: request.method,
-    headers: {
-      "User-Agent": request.headers.get("User-Agent") ?? "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-      "Accept": request.headers.get("Accept") ?? "*/*",
-    },
+    headers: forwardedHeaders,
     signal: AbortSignal.timeout(10000),
   };
 

@@ -49,6 +49,19 @@ async function proxyKuwoAudio(targetUrl, req, res) {
     'Accept': req.headers['accept'] || '*/*',
   };
 
+  // 全量透传客户端发来的自定义业务请求头（跳过逐跳传输头与宿主头）
+  const HOP_BY_HOP = new Set([
+    'host', 'connection', 'keep-alive', 'transfer-encoding', 'upgrade',
+    'cookie', 'content-length', 'cf-ray', 'cf-connecting-ip', 'cf-ipcountry',
+    'cf-visitor', 'cdn-loop', 'x-forwarded-for', 'x-forwarded-proto'
+  ]);
+  for (const [key, val] of Object.entries(req.headers)) {
+    const lk = key.toLowerCase();
+    if (!HOP_BY_HOP.has(lk) && typeof val === 'string' && val.trim()) {
+      headers[key] = val;
+    }
+  }
+
   if (isAllowedKuwoHost(parsed.hostname)) {
     headers['Referer'] = 'https://www.kuwo.cn/';
     parsed.protocol = 'http:';

@@ -78,6 +78,24 @@ class LxMusicPluginEngine {
     }
 
     /**
+     * 辅助清洗与转译请求头，防止非法非 ASCII 字符导致浏览器原生 fetch() 抛出 ByteString 致命异常
+     */
+    sanitizeHeaders(rawHeaders = {}) {
+        const clean = {};
+        for (const [k, v] of Object.entries(rawHeaders)) {
+            if (v === undefined || v === null) continue;
+            const strVal = String(v);
+            // 包含非 Latin-1 (码值 > 255) 字符时，使用 encodeURI 转译为合法 ByteString 序列
+            if (/[\u0080-\uFFFF]/.test(strVal)) {
+                clean[k] = encodeURI(strVal);
+            } else {
+                clean[k] = strVal;
+            }
+        }
+        return clean;
+    }
+
+    /**
      * 突破跨域限制的统一网络请求器
      * 如果直连失败或报错，自动通过 Solara 的同构代理 (/proxy?target=...) 回源
      */
@@ -87,8 +105,27 @@ class LxMusicPluginEngine {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-        const method = options.method || "GET";
-        const headers = { ...(options.headers || {}) };
+        const method = (options.method || "GET").toUpperCase();
+        const headers = this.sanitizeHeaders(options.headers || {});
+
+        // 兼容 options.form 表单提交
+        let bodyData = options.body;
+        if (!bodyData && options.form && typeof options.form === "object") {
+            bodyData = new URLSearchParams(options.form).toString();
+            if (!headers["Content-Type"] && !headers["content-type"]) {
+                headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8";
+            }
+        } else if (!bodyData && options.formData) {
+            bodyData = options.formData;
+        }
+
+        let bodyPayload = undefined;
+        if (method !== "GET" && method !== "HEAD" && bodyData !== undefined) {
+            bodyPayload = typeof bodyData === "object" ? JSON.stringify(bodyData) : String(bodyData);
+            if (!headers["Content-Type"] && !headers["content-type"] && typeof bodyData === "object") {
+                headers["Content-Type"] = "application/json";
+            }
+        }
 
         // 尝试直连 (有些 API 支持 CORS 且速度最快)
         try {
@@ -97,11 +134,16 @@ class LxMusicPluginEngine {
                 headers,
                 signal: controller.signal
             };
-            if (options.body) {
-                fetchOpts.body = typeof options.body === "object" ? JSON.stringify(options.body) : options.body;
+            if (bodyPayload !== undefined) {
+                fetchOpts.body = bodyPayload;
             }
             const resp = await fetch(url, fetchOpts);
             clearTimeout(timer);
+
+            // 若直连遇到特定跨域/网关阻断状态码 (401/403/405/502/503)，自动触发 fallback 代理兜底
+            if (!resp.ok && [401, 403, 405, 502, 503].includes(resp.status)) {
+                throw new Error(`直连受阻 HTTP ${resp.status}`);
+            }
 
             let body = await resp.text();
             try {
@@ -118,7 +160,7 @@ class LxMusicPluginEngine {
             };
         } catch (directErr) {
             clearTimeout(timer);
-            // 直连失败（如被浏览器拦截 CORS 跨域），无缝切换到 Solara 同构代理网关
+            // 直连失败（如被浏览器拦截 CORS 跨域），无缝切换到 Solara 边缘网关代理
             console.log(`[LX Sandbox] 直连受限 (${directErr.message})，转入 Solara 边缘网关代理: ${url}`);
             const proxyUrl = `/proxy?target=${encodeURIComponent(url)}`;
             const proxyController = new AbortController();
@@ -133,8 +175,8 @@ class LxMusicPluginEngine {
                     headers,
                     signal: proxyController.signal
                 };
-                if (options.body) {
-                    proxyOpts.body = typeof options.body === "object" ? JSON.stringify(options.body) : options.body;
+                if (bodyPayload !== undefined) {
+                    proxyOpts.body = bodyPayload;
                 }
                 const proxyResp = await fetch(proxyUrl, proxyOpts);
                 clearTimeout(proxyTimer);
@@ -172,7 +214,11 @@ class LxMusicPluginEngine {
                 updateAlert: "updateAlert"
             },
             version: "2.8.0",
-            env: "desktop",
+            env: Object.assign(new String("desktop"), {
+                platform: "desktop",
+                version: "2.8.0",
+                appVersion: "2.8.0"
+            }),
             currentScriptInfo: {
                 name: engine.scriptInfo?.name || "未知音源",
                 description: engine.scriptInfo?.description || "",
@@ -193,17 +239,26 @@ class LxMusicPluginEngine {
                 }
             },
             request: (url, options, callback) => {
+                if (typeof options === "function") {
+                    callback = options;
+                    options = {};
+                }
                 engine.httpFetch(url, options)
                     .then((res) => {
                         try {
-                            if (typeof callback === "function") callback(null, res);
+                            if (typeof callback === "function") {
+                                // 规范传参：第 1 参 err，第 2 参 resp，第 3 参 resp.body
+                                callback(null, res, res?.body);
+                            }
                         } catch (cbErr) {
                             console.warn("[LX Sandbox] 脚本数据回调执行异常 (已安全隔离):", cbErr.message);
                         }
                     })
                     .catch((err) => {
                         try {
-                            if (typeof callback === "function") callback(err, null);
+                            if (typeof callback === "function") {
+                                callback(err, null, null);
+                            }
                         } catch (cbErr) {
                             console.warn("[LX Sandbox] 脚本错误回调执行异常 (已安全隔离):", cbErr.message);
                         }
@@ -211,12 +266,73 @@ class LxMusicPluginEngine {
             },
             utils: {
                 buffer: {
-                    from: (data) => new Uint8Array(typeof data === "string" ? new TextEncoder().encode(data) : data),
-                    bufToString: (buf, encoding = "utf-8") => new TextDecoder(encoding).decode(buf)
+                    from: (data, encoding = "utf-8") => {
+                        if (typeof data === "string") {
+                            const enc = String(encoding).toLowerCase();
+                            if (enc === "base64") {
+                                try {
+                                    const bin = atob(data.trim());
+                                    const bytes = new Uint8Array(bin.length);
+                                    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                                    return bytes;
+                                } catch {
+                                    return new Uint8Array();
+                                }
+                            }
+                            if (enc === "hex") {
+                                const cleanHex = data.replace(/[^0-9a-fA-F]/g, "");
+                                const bytes = new Uint8Array(cleanHex.length / 2);
+                                for (let i = 0; i < cleanHex.length; i += 2) {
+                                    bytes[i / 2] = parseInt(cleanHex.substr(i, 2), 16);
+                                }
+                                return bytes;
+                            }
+                            return new TextEncoder().encode(data);
+                        }
+                        if (data instanceof Uint8Array) return data;
+                        if (data instanceof ArrayBuffer) return new Uint8Array(data);
+                        if (Array.isArray(data)) return new Uint8Array(data);
+                        return new Uint8Array();
+                    },
+                    bufToString: (buf, encoding = "utf-8") => {
+                        if (!buf) return "";
+                        const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+                        const enc = String(encoding).toLowerCase();
+                        if (enc === "base64") {
+                            let binary = "";
+                            const len = u8.byteLength;
+                            const chunkSize = 8192;
+                            for (let i = 0; i < len; i += chunkSize) {
+                                const sub = u8.subarray(i, Math.min(i + chunkSize, len));
+                                binary += String.fromCharCode.apply(null, sub);
+                            }
+                            return btoa(binary);
+                        }
+                        if (enc === "hex") {
+                            return Array.from(u8).map(b => b.toString(16).padStart(2, "0")).join("");
+                        }
+                        try {
+                            return new TextDecoder(encoding || "utf-8").decode(u8);
+                        } catch {
+                            return new TextDecoder("utf-8").decode(u8);
+                        }
+                    }
                 },
                 crypto: {
                     md5: (str) => {
                         return typeof window.CryptoJS !== "undefined" ? window.CryptoJS.MD5(str).toString() : "";
+                    },
+                    aesEncrypt: (data, mode, key, iv) => {
+                        if (typeof window.CryptoJS !== "undefined") {
+                            try {
+                                const k = window.CryptoJS.enc.Utf8.parse(key);
+                                const i = iv ? window.CryptoJS.enc.Utf8.parse(iv) : undefined;
+                                const m = String(mode).toUpperCase() === "ECB" ? window.CryptoJS.mode.ECB : window.CryptoJS.mode.CBC;
+                                const enc = window.CryptoJS.AES.encrypt(data, k, { iv: i, mode: m });
+                                return enc.toString();
+                            } catch {}
+                        }
+                        return "";
                     }
                 }
             }
@@ -575,28 +691,97 @@ class LxMusicPluginEngine {
             const probeHost = {
                 EVENT_NAMES: { request: "request", inited: "inited", updateAlert: "updateAlert" },
                 version: "2.8.0",
-                env: "desktop",
+                env: Object.assign(new String("desktop"), {
+                    platform: "desktop",
+                    version: "2.8.0",
+                    appVersion: "2.8.0"
+                }),
                 currentScriptInfo: meta,
                 on: (eventName, handler) => {
                     if (eventName === "request") probeHandler = handler;
                 },
                 send: () => {},
                 request: (url, options, callback) => {
+                    if (typeof options === "function") {
+                        callback = options;
+                        options = {};
+                    }
                     this.httpFetch(url, { ...(options || {}), timeout: 5000 })
                         .then(res => {
-                            if (typeof callback === "function") callback(null, res);
+                            if (typeof callback === "function") callback(null, res, res?.body);
                         })
                         .catch(err => {
-                            if (typeof callback === "function") callback(err, null);
+                            if (typeof callback === "function") callback(err, null, null);
                         });
                 },
                 utils: {
                     buffer: {
-                        from: (d) => new Uint8Array(typeof d === "string" ? new TextEncoder().encode(d) : d),
-                        bufToString: (b, enc = "utf-8") => new TextDecoder(enc).decode(b)
+                        from: (data, encoding = "utf-8") => {
+                            if (typeof data === "string") {
+                                const enc = String(encoding).toLowerCase();
+                                if (enc === "base64") {
+                                    try {
+                                        const bin = atob(data.trim());
+                                        const bytes = new Uint8Array(bin.length);
+                                        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                                        return bytes;
+                                    } catch {
+                                        return new Uint8Array();
+                                    }
+                                }
+                                if (enc === "hex") {
+                                    const cleanHex = data.replace(/[^0-9a-fA-F]/g, "");
+                                    const bytes = new Uint8Array(cleanHex.length / 2);
+                                    for (let i = 0; i < cleanHex.length; i += 2) {
+                                        bytes[i / 2] = parseInt(cleanHex.substr(i, 2), 16);
+                                    }
+                                    return bytes;
+                                }
+                                return new TextEncoder().encode(data);
+                            }
+                            if (data instanceof Uint8Array) return data;
+                            if (data instanceof ArrayBuffer) return new Uint8Array(data);
+                            if (Array.isArray(data)) return new Uint8Array(data);
+                            return new Uint8Array();
+                        },
+                        bufToString: (buf, encoding = "utf-8") => {
+                            if (!buf) return "";
+                            const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+                            const enc = String(encoding).toLowerCase();
+                            if (enc === "base64") {
+                                let binary = "";
+                                const len = u8.byteLength;
+                                const chunkSize = 8192;
+                                for (let i = 0; i < len; i += chunkSize) {
+                                    const sub = u8.subarray(i, Math.min(i + chunkSize, len));
+                                    binary += String.fromCharCode.apply(null, sub);
+                                }
+                                return btoa(binary);
+                            }
+                            if (enc === "hex") {
+                                return Array.from(u8).map(b => b.toString(16).padStart(2, "0")).join("");
+                            }
+                            try {
+                                return new TextDecoder(encoding || "utf-8").decode(u8);
+                            } catch {
+                                return new TextDecoder("utf-8").decode(u8);
+                            }
+                        }
                     },
                     crypto: {
-                        md5: (str) => typeof window.CryptoJS !== "undefined" ? window.CryptoJS.MD5(str).toString() : ""
+                        md5: (str) => typeof window.CryptoJS !== "undefined" ? window.CryptoJS.MD5(str).toString() : "",
+                        aesEncrypt: (data, mode, key, iv) => {
+                            if (typeof window.CryptoJS !== "undefined") {
+                                try {
+                                    const k = window.CryptoJS.enc.Utf8.parse(key);
+                                    const i = iv ? window.CryptoJS.enc.Utf8.parse(iv) : undefined;
+                                    const m = String(mode).toUpperCase() === "ECB" ? window.CryptoJS.mode.ECB : window.CryptoJS.mode.CBC;
+                                    const enc = window.CryptoJS.AES.encrypt(data, k, { iv: i, mode: m });
+                                    return enc.toString();
+                                } catch {}
+                            }
+                            return "";
+                        }
                     }
                 }
             };
@@ -755,12 +940,21 @@ class LxMusicPluginEngine {
         };
         const lxQuality = qualityMap[quality] || "320k";
 
+        const rawMeta = song.meta || {};
         const musicInfo = {
-            id: String(song.id || song.songmid || ""),
-            songmid: String(song.songmid || song.id || ""),
+            id: String(song.id || song.songmid || rawMeta.songId || ""),
+            songmid: String(song.songmid || song.id || rawMeta.songId || ""),
             name: song.name,
-            singer: song.artist,
-            hash: song.hash || song.id || ""
+            singer: song.artist || rawMeta.singer || "",
+            albumName: song.album || rawMeta.albumName || "",
+            albumId: song.albumId || rawMeta.albumId || "",
+            interval: song.interval || rawMeta.interval || "",
+            hash: song.hash || rawMeta.hash || song.id || "",
+            types: song.types || rawMeta.types || rawMeta.qualitys || {},
+            _types: song._types || rawMeta._types || rawMeta._qualitys || {},
+            picUrl: song.pic || rawMeta.picUrl || "",
+            img: song.pic || rawMeta.picUrl || "",
+            meta: { ...rawMeta, ...(song.hash ? { hash: song.hash } : {}) }
         };
 
         // 针对酷狗源：若 hash 缺失或为纯数字 ID，秒查酷狗官方补齐 32 位 MD5 Hash
@@ -787,11 +981,21 @@ class LxMusicPluginEngine {
         // 验证与预处理 URL（自动升级安全协议，过滤失效报错接口）
         const isAudioUrlValid = async (url) => {
             if (!url || typeof url !== "string" || !url.startsWith("http")) return false;
-            let targetUrl = url;
-            // 若为纯 http 且页面在 https 环境下，对于支持 https 的主流媒体 CDN 自动升级，防止浏览器 Mixed Content 阻断
+            let targetUrl = url.trim();
+            // 若为纯 http 且页面在 https 环境下，优先尝试升级到主流支持 HTTPS 的媒体 CDN，否则通过安全代理网关包装
             if (typeof window !== "undefined" && window.location.protocol === "https:" && targetUrl.startsWith("http://")) {
-                if (targetUrl.includes("haitangw.net") || targetUrl.includes("kuwo.cn") || targetUrl.includes("kugou.com") || targetUrl.includes("126.net") || targetUrl.includes("qq.com")) {
+                if (
+                    targetUrl.includes("haitangw.net") ||
+                    targetUrl.includes("kuwo.cn") ||
+                    targetUrl.includes("kugou.com") ||
+                    targetUrl.includes("126.net") ||
+                    targetUrl.includes("qq.com") ||
+                    targetUrl.includes("tx.kugou.com") ||
+                    targetUrl.includes("migu.cn")
+                ) {
                     targetUrl = targetUrl.replace(/^http:\/\//i, "https://");
+                } else {
+                    targetUrl = `/proxy?target=${encodeURIComponent(targetUrl)}`;
                 }
             }
             // 过滤已知死节点与返回纯报错 JSON 的失效接口（如 TLS 中断的 sayqz、443 阻断的 88.lxmusic、下线的 nxinxz 等）
@@ -865,7 +1069,8 @@ class LxMusicPluginEngine {
                 }));
 
                 const resolveStart = performance.now();
-                const resultUrl = await Promise.race([execPromise, timeoutPromise]);
+                const rawResult = await Promise.race([execPromise, timeoutPromise]);
+                const resultUrl = (typeof rawResult === "object" && rawResult !== null) ? (rawResult.url || "") : (typeof rawResult === "string" ? rawResult : "");
                 const validUrl = await isAudioUrlValid(resultUrl);
                 if (validUrl) {
                     const latencyMs = Math.round(performance.now() - resolveStart);
@@ -917,7 +1122,8 @@ class LxMusicPluginEngine {
                                     }
                                 }
                             }));
-                            const crossTxUrl = await Promise.race([txPromise, new Promise((_, reject) => setTimeout(() => reject(new Error("tx跨源超时")), 2500))]);
+                            const rawCrossTx = await Promise.race([txPromise, new Promise((_, reject) => setTimeout(() => reject(new Error("tx跨源超时")), 2500))]);
+                            const crossTxUrl = (typeof rawCrossTx === "object" && rawCrossTx !== null) ? (rawCrossTx.url || "") : (typeof rawCrossTx === "string" ? rawCrossTx : "");
                             const validCrossTx = await isAudioUrlValid(crossTxUrl);
                             if (validCrossTx) {
                                 console.log(`[LX Sandbox] 音源【${currentSrc.name}】跨源至【tx】解析成功: ${validCrossTx.slice(0, 60)}...`);
@@ -948,7 +1154,8 @@ class LxMusicPluginEngine {
                                 }
                             }
                         }));
-                        const crossUrl = await Promise.race([crossPromise, new Promise((_, reject) => setTimeout(() => reject(new Error("跨源超时")), 2500))]);
+                        const rawCross = await Promise.race([crossPromise, new Promise((_, reject) => setTimeout(() => reject(new Error("跨源超时")), 2500))]);
+                        const crossUrl = (typeof rawCross === "object" && rawCross !== null) ? (rawCross.url || "") : (typeof rawCross === "string" ? rawCross : "");
                         const validCrossUrl = await isAudioUrlValid(crossUrl);
                         if (validCrossUrl) {
                             console.log(`[LX Sandbox] 音源【${currentSrc.name}】跨源至【wy】解析成功: ${validCrossUrl.slice(0, 60)}...`);
