@@ -346,9 +346,6 @@ export class LXMusicProgressBarVisualizer {
         const totalSpectrumW = count * barW + (count - 1) * colGap;
         const startX = Math.max(0, Math.floor((w - totalSpectrumW) / 2));
 
-        const vol = this.audio.muted ? 0 : (this.audio.volume ?? 1);
-        if (vol <= 0.01) return;
-
         // 尝试从 Web Audio 真实获取 FFT 频域能量
         let hasRealAudio = false;
         if (this.isAudioNodesReady && this.audioAnalyser && this.freqData) {
@@ -386,8 +383,8 @@ export class LXMusicProgressBarVisualizer {
                 rawEnergy = (pulse1 * 0.5 + pulse2 * 0.3 + kick * 0.6) * 0.85;
             }
 
-            // 映射到目标像素高度 (至少 1 块方块)
-            const targetHeight = Math.max(cubeHeight, Math.min(rawEnergy * maxH * vol, maxH));
+            // 映射到目标像素高度 (固定饱满高度，不随音量滑块大小缩放)
+            const targetHeight = Math.max(cubeHeight, Math.min(rawEnergy * maxH, maxH));
             bar.target = targetHeight;
 
             // 独立上升与回落阻尼
