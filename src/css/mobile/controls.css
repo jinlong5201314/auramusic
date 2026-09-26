@@ -5,6 +5,7 @@
 /* ─── 1. 悬浮控制卡片底栏 (Floating Dock) ───────────────────────────────── */
 
 body.mobile-view .controls {
+    position: relative;
     width: 100%;
     margin-top: auto;
     background: var(--container-bg);
@@ -260,4 +261,13 @@ body.mobile-view .audio-tools,
 body.mobile-view .control-trailing,
 body.mobile-view .volume-container {
     display: none !important;
+}
+
+body.mobile-view .controls-spectrum {
+    height: 18px;
+    border-radius: 0 0 26px 26px;
+}
+
+body.mobile-view .controls-spectrum:hover {
+    height: 22px;
 }

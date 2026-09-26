@@ -2,6 +2,7 @@
 /* ─── Apple 灵动悬浮控制底栏 (Floating Island Dock) ─────────────── */
 .controls {
     grid-area: controls;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -217,6 +218,8 @@
     align-items: center;
     gap: 8px;
     flex: 0 0 auto;
+    position: relative;
+    z-index: 2;
 }
 
 html:not(.mobile-view) .transport-controls {
@@ -306,6 +309,8 @@ html:not(.mobile-view) .transport-controls {
     gap: 10px;
     flex: 1 1 auto;
     min-width: 140px;
+    position: relative;
+    z-index: 2;
 }
 
 .control-trailing {
@@ -314,6 +319,8 @@ html:not(.mobile-view) .transport-controls {
     gap: 12px;
     flex: 0 0 auto;
     flex-wrap: nowrap;
+    position: relative;
+    z-index: 2;
 }
 
 .progress-container span {
@@ -1066,5 +1073,34 @@ input[type="range"]:active::-moz-range-thumb {
     justify-content: center;
     width: auto;
     max-width: 100%;
+}
+
+/* ─── 播放控制底栏流体音频频谱律动动画 ─────────────────────── */
+.controls-spectrum {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 24px;
+    border-radius: 0 0 24px 24px;
+    overflow: hidden;
+    pointer-events: auto;
+    cursor: pointer;
+    z-index: 1;
+    opacity: 0.85;
+    transition: opacity 0.3s ease, height 0.3s var(--spring-smooth);
+}
+
+.controls-spectrum:hover {
+    opacity: 1;
+    height: 28px;
+}
+
+.controls-spectrum-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
 }
 

@@ -38,6 +38,7 @@ import {
     createDebugLogger,
     initDebugShortcut
 } from "./visual/spotlight.js";
+import { initBottomSpectrum } from "./visual/spectrum.js";
 import {
     loadLyrics,
     syncLyrics,
@@ -1785,6 +1786,7 @@ export async function bootstrap() {
     }
 
     initSpotlightEffect();
+    initBottomSpectrum(dom, state);
     initMediaSession(state, dom, {
         playNext: () => playNext(state, dom, getAudioCallbacks()),
         playPrevious: () => playPrevious(state, dom, getAudioCallbacks()),
