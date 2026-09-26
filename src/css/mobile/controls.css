@@ -264,10 +264,13 @@ body.mobile-view .volume-container {
 }
 
 body.mobile-view .controls-spectrum {
-    height: 18px;
-    border-radius: 0 0 26px 26px;
+    height: 100%;
+    max-height: 52px;
+    border-radius: 26px;
+    z-index: 0;
+    opacity: 0.88;
 }
 
 body.mobile-view .controls-spectrum:hover {
-    height: 22px;
+    opacity: 1;
 }
