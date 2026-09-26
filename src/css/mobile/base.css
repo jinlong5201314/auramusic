@@ -193,6 +193,26 @@ body.mobile-view .mobile-toolbar__title {
     pointer-events: auto;
 }
 
+body.mobile-view .mobile-version-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.12);
+    color: #0284c7;
+    border: 1px solid rgba(56, 189, 248, 0.28);
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    flex-shrink: 0;
+}
+
+body.mobile-view.dark-mode .mobile-version-badge,
+body.dark-mode .mobile-version-badge {
+    background: rgba(56, 189, 248, 0.16);
+    color: #38bdf8;
+    border-color: rgba(56, 189, 248, 0.32);
+}
+
 body.mobile-view .mobile-toolbar__title::after {
     display: none !important;
 }

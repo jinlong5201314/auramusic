@@ -109,7 +109,7 @@ body.mobile-view .lx-source-item {
 }
 
 body.mobile-view .lx-source-url-text {
-    max-width: 180px;
+    max-width: 150px;
 }
 
 body.mobile-view .lx-source-list-header {
@@ -117,7 +117,30 @@ body.mobile-view .lx-source-list-header {
     margin-bottom: 6px;
 }
 
+body.mobile-view .lx-source-header-actions {
+    gap: 4px;
+}
+
+body.mobile-view .lx-source-header-btn,
+body.mobile-view .lx-source-probe-all-btn {
+    padding: 2px 7px;
+    font-size: 10px;
+}
+
+body.mobile-view .lx-source-actions {
+    gap: 2px;
+    margin-left: 4px;
+}
+
+body.mobile-view .lx-source-toggle-btn,
+body.mobile-view .lx-source-update-btn,
+body.mobile-view .lx-source-probe-btn,
+body.mobile-view .lx-source-del-btn {
+    width: 26px;
+    height: 26px;
+}
+
 body.mobile-view .lx-probe-badge {
-    font-size: 9.5px;
-    padding: 1px 5px;
+    font-size: 9px;
+    padding: 1px 4px;
 }

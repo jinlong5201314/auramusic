@@ -109,13 +109,17 @@ export function renderLxSourceList(dom) {
 
     dom.lxSourceList.innerHTML = sources.map((src) => {
         const isActive = src.id === lxPluginEngine.activeSourceId;
+        const isDisabled = Boolean(src.disabled);
         const activeClass = isActive ? "is-active" : "";
+        const disabledClass = isDisabled ? "is-disabled" : "";
         const checkedAttr = isActive ? "checked" : "";
 
-        // 探测状态徽标
+        // 探测/更新状态徽标
         let probeBadge = "";
         if (src.probeStatus === "probing") {
             probeBadge = `<span class="lx-probe-badge is-probing"><span class="probe-spinner"></span> 测速中...</span>`;
+        } else if (src.probeStatus === "updating") {
+            probeBadge = `<span class="lx-probe-badge is-probing"><span class="probe-spinner"></span> 更新中...</span>`;
         } else if (src.probeResult) {
             if (src.probeResult.ok) {
                 probeBadge = `<span class="lx-probe-badge is-ok" title="探测时间: ${new Date(src.probeResult.time).toLocaleTimeString()}">🟢 ${src.probeResult.latencyMs}ms 正常</span>`;
@@ -126,20 +130,36 @@ export function renderLxSourceList(dom) {
             probeBadge = `<span class="lx-probe-badge is-idle">⚪ 未探测</span>`;
         }
 
+        const disabledTag = isDisabled ? `<span class="lx-source-disabled-tag">已禁用</span>` : "";
+
+        // 切换禁用/启用图标与状态
+        const toggleIcon = isDisabled
+            ? `<svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>`
+            : `<svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
+        const toggleTitle = isDisabled ? "启用此音源" : "禁用此音源";
+        const toggleClass = isDisabled ? "is-disabled-state" : "is-enabled-state";
+
         return `
-            <div class="lx-source-item ${activeClass}" data-id="${src.id}">
+            <div class="lx-source-item ${activeClass} ${disabledClass}" data-id="${src.id}">
                 <div class="lx-source-main" data-id="${src.id}">
-                    <input type="radio" name="lxActiveSourceRadio" class="lx-source-radio" value="${src.id}" ${checkedAttr} />
+                    <input type="radio" name="lxActiveSourceRadio" class="lx-source-radio" value="${src.id}" ${checkedAttr} ${isDisabled ? 'disabled title="音源已禁用，点击卡片可重新启用"' : ''} />
                     <div class="lx-source-meta">
                         <div class="lx-source-title-row">
                             <span class="lx-source-title">${src.name || "自定义音源"}</span>
                             <span class="lx-source-ver-tag">v${src.version || "1.0.0"}</span>
+                            ${disabledTag}
                             ${probeBadge}
                         </div>
                         <span class="lx-source-url-text" title="${src.url}">${src.url}</span>
                     </div>
                 </div>
                 <div class="lx-source-actions">
+                    <button type="button" class="lx-source-toggle-btn ${toggleClass}" data-id="${src.id}" title="${toggleTitle}">
+                        ${toggleIcon}
+                    </button>
+                    <button type="button" class="lx-source-update-btn" data-id="${src.id}" title="检查并更新此音源脚本">
+                        <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    </button>
                     <button type="button" class="lx-source-probe-btn" data-id="${src.id}" title="探测健康度与测速">
                         <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                     </button>
@@ -155,7 +175,12 @@ export function renderLxSourceList(dom) {
     dom.lxSourceList.querySelectorAll(".lx-source-main").forEach(item => {
         item.addEventListener("click", async () => {
             const id = item.getAttribute("data-id");
-            if (id && id !== lxPluginEngine.activeSourceId) {
+            if (!id) return;
+            const targetSrc = lxPluginEngine.sources.find(s => s.id === id);
+            if (targetSrc?.disabled) {
+                await lxPluginEngine.toggleSourceDisabled(id, false);
+            }
+            if (id !== lxPluginEngine.activeSourceId) {
                 showNotification("正在切换音源...", "info", dom);
                 lxPluginEngine.activeSourceId = id;
                 safeSetLocalStorage("lxMusicActiveSourceId", id);
@@ -170,6 +195,72 @@ export function renderLxSourceList(dom) {
                     });
                 }
                 showNotification(ok ? `已切换生效音源: 【${lxPluginEngine.scriptInfo?.name || "自定义音源"}】` : `音源加载异常: ${lxPluginEngine.lastError}`, ok ? "success" : "error", dom);
+            }
+        });
+    });
+
+    // 绑定启用/禁用切换按钮
+    dom.lxSourceList.querySelectorAll(".lx-source-toggle-btn").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute("data-id");
+            if (!id) return;
+            const targetSrc = lxPluginEngine.sources.find(s => s.id === id);
+            if (!targetSrc) return;
+
+            const willDisable = !targetSrc.disabled;
+            await lxPluginEngine.toggleSourceDisabled(id, willDisable);
+            renderLxSourceList(dom);
+
+            if (typeof persistStorageItems === "function") {
+                persistStorageItems({
+                    lxMusicSourcesList: JSON.stringify(lxPluginEngine.sources),
+                    lxMusicActiveSourceId: lxPluginEngine.activeSourceId,
+                    lxMusicSourceEnabled: String(lxPluginEngine.isEnabled)
+                });
+            }
+
+            showNotification(
+                willDisable ? `已禁用音源【${targetSrc.name}】` : `已启用音源【${targetSrc.name}】`,
+                willDisable ? "warn" : "success",
+                dom
+            );
+        });
+    });
+
+    // 绑定单个音源更新按钮
+    dom.lxSourceList.querySelectorAll(".lx-source-update-btn").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute("data-id");
+            if (!id) return;
+            const targetSrc = lxPluginEngine.sources.find(s => s.id === id);
+            if (!targetSrc) return;
+
+            btn.disabled = true;
+            btn.classList.add("is-updating");
+            showNotification(`正在重新拉取【${targetSrc.name}】脚本...`, "info", dom);
+
+            try {
+                const res = await lxPluginEngine.updateSource(id);
+                renderLxSourceList(dom);
+                if (typeof persistStorageItems === "function") {
+                    persistStorageItems({
+                        lxMusicSourcesList: JSON.stringify(lxPluginEngine.sources),
+                        lxMusicActiveSourceId: lxPluginEngine.activeSourceId,
+                        lxMusicSourceEnabled: String(lxPluginEngine.isEnabled)
+                    });
+                }
+                showNotification(
+                    res.ok ? `【${targetSrc.name}】${res.message}` : `更新失败: ${res.message}`,
+                    res.ok ? "success" : "error",
+                    dom
+                );
+            } catch (err) {
+                showNotification(`更新异常: ${err.message}`, "error", dom);
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove("is-updating");
             }
         });
     });
@@ -250,6 +341,55 @@ export function renderLxSourceList(dom) {
                 sources.forEach(s => s.probeStatus = "done");
                 probeAllBtn.disabled = false;
                 probeAllBtn.innerHTML = origHtml;
+                renderLxSourceList(dom);
+            }
+        });
+    }
+
+    // 绑定全部更新音源事件
+    const updateAllBtn = document.getElementById("lxSourceUpdateAllBtn");
+    if (updateAllBtn && !updateAllBtn.__boundUpdateAll) {
+        updateAllBtn.__boundUpdateAll = true;
+        updateAllBtn.addEventListener("click", async () => {
+            const sources = lxPluginEngine.sources || [];
+            if (sources.length === 0) {
+                showNotification("未配置任何音源可供更新", "info", dom);
+                return;
+            }
+            updateAllBtn.disabled = true;
+            const origHtml = updateAllBtn.innerHTML;
+            updateAllBtn.innerHTML = '<span class="loader" style="width:11px;height:11px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:4px;"></span>更新中...';
+            showNotification("正在并发拉取更新所有音源脚本...", "info", dom);
+
+            try {
+                const results = await lxPluginEngine.updateAllSources((src, state) => {
+                    src.probeStatus = state.status === "updating" ? "updating" : "done";
+                    renderLxSourceList(dom);
+                });
+                const updatedCount = results.filter(r => r.ok && r.isUpdated).length;
+                const okCount = results.filter(r => r.ok).length;
+
+                if (typeof persistStorageItems === "function") {
+                    persistStorageItems({
+                        lxMusicSourcesList: JSON.stringify(lxPluginEngine.sources),
+                        lxMusicActiveSourceId: lxPluginEngine.activeSourceId,
+                        lxMusicSourceEnabled: String(lxPluginEngine.isEnabled)
+                    });
+                }
+
+                showNotification(
+                    `音源更新完成: ${okCount}/${sources.length} 成功${updatedCount > 0 ? ` (发现 ${updatedCount} 个新版本)` : " (已是最新)"}`,
+                    okCount > 0 ? "success" : "warn",
+                    dom
+                );
+            } catch (err) {
+                showNotification(`批量更新异常: ${err.message}`, "error", dom);
+            } finally {
+                sources.forEach(s => {
+                    if (s.probeStatus === "updating") s.probeStatus = "done";
+                });
+                updateAllBtn.disabled = false;
+                updateAllBtn.innerHTML = origHtml;
                 renderLxSourceList(dom);
             }
         });

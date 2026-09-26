@@ -67,12 +67,14 @@ class LxMusicPluginEngine {
     }
 
     /**
-     * 获取当前生效的音源配置对象
+     * 获取当前生效的音源配置对象（跳过已禁用的音源）
      */
     getActiveSource() {
         if (!this.sources.length) return null;
         const currentActiveId = this.activeSourceId || safeGetLocalStorage("lxMusicActiveSourceId");
-        return this.sources.find(s => s.id === currentActiveId) || this.sources[0];
+        const found = this.sources.find(s => s.id === currentActiveId);
+        if (found && !found.disabled) return found;
+        return this.sources.find(s => !s.disabled) || null;
     }
 
     /**
@@ -418,6 +420,119 @@ class LxMusicPluginEngine {
     }
 
     /**
+     * 切换音源的启用/禁用状态
+     */
+    async toggleSourceDisabled(sourceId, disabled) {
+        const target = this.sources.find(s => s.id === sourceId);
+        if (!target) return false;
+
+        target.disabled = typeof disabled === "boolean" ? disabled : !target.disabled;
+
+        // 若禁用了当前生效的音源，自动切换到下一个可用源
+        if (target.disabled && this.activeSourceId === sourceId) {
+            const nextActive = this.sources.find(s => !s.disabled);
+            if (nextActive) {
+                this.activeSourceId = nextActive.id;
+                safeSetLocalStorage("lxMusicActiveSourceId", nextActive.id);
+                await this.activateSource(nextActive.id);
+            } else {
+                this.activeSourceId = "";
+                safeSetLocalStorage("lxMusicActiveSourceId", "");
+                this.status = "idle";
+                this.registeredHandler = null;
+                this.scriptInfo = null;
+            }
+        } else if (!target.disabled && (!this.activeSourceId || this.sources.find(s => s.id === this.activeSourceId)?.disabled)) {
+            // 若之前无激活源或激活源已禁用，启用后自动激活此源
+            this.activeSourceId = target.id;
+            safeSetLocalStorage("lxMusicActiveSourceId", target.id);
+            await this.activateSource(target.id);
+        }
+
+        this.saveSourcesToStorage();
+        return target.disabled;
+    }
+
+    /**
+     * 重新拉取脚本源码更新指定音源
+     */
+    async updateSource(sourceId) {
+        const target = this.sources.find(s => s.id === sourceId);
+        if (!target) return { ok: false, message: "音源未找到" };
+
+        const oldVer = target.version || "1.0.0";
+        const oldName = target.name || "自定义音源";
+
+        try {
+            // 1. 强制清理内存缓存
+            if (this.scriptCache) {
+                this.scriptCache.delete(target.url);
+            }
+
+            // 2. 重新下载最新脚本
+            const code = await this.fetchScriptSource(target.url);
+            const newMeta = this.parseMetadata(code);
+
+            // 3. 更新元数据
+            target.name = newMeta.name || target.name;
+            target.version = newMeta.version || target.version;
+            target.author = newMeta.author || target.author;
+            target.description = newMeta.description || target.description;
+            target.updatedAt = Date.now();
+
+            // 4. 若为当前生效且未禁用的源，重新加载沙箱
+            if (this.activeSourceId === sourceId && !target.disabled) {
+                this.initSandbox();
+                try {
+                    const runner = new Function(code);
+                    runner();
+                    this.status = "ready";
+                    this.scriptInfo = newMeta;
+                } catch (evalErr) {
+                    console.warn(`[LX Sandbox] 更新脚本执行警告 (${target.name}):`, evalErr.message);
+                }
+            }
+
+            this.saveSourcesToStorage();
+            const isUpdated = oldVer !== target.version || oldName !== target.name;
+            return {
+                ok: true,
+                isUpdated,
+                oldVer,
+                newVer: target.version,
+                name: target.name,
+                message: isUpdated
+                    ? `已更新：v${oldVer} → v${target.version}`
+                    : `已拉取最新，当前为 v${target.version}`
+            };
+        } catch (err) {
+            console.error("[LX Engine] 音源更新失败:", err);
+            return {
+                ok: false,
+                message: err.message || "更新失败"
+            };
+        }
+    }
+
+    /**
+     * 批量更新所有已添加的音源
+     */
+    async updateAllSources(onProgress) {
+        const results = [];
+        for (const src of this.sources) {
+            if (typeof onProgress === "function") {
+                onProgress(src, { status: "updating" });
+            }
+            const res = await this.updateSource(src.id);
+            results.push({ src, ...res });
+            if (typeof onProgress === "function") {
+                onProgress(src, { status: "done", result: res });
+            }
+        }
+        return results;
+    }
+
+    /**
      * 对指定音源进行连通度与出链深度探测
      */
     async probeSource(sourceId) {
@@ -694,11 +809,12 @@ class LxMusicPluginEngine {
             return targetUrl;
         };
 
-        // 构造候选音源列表：当前激活源优先，其余已添加源作为自动容灾备用源
+        // 构造候选音源列表：当前激活源优先，其余已添加且未禁用的源作为自动容灾备用源
         const candidateSources = [];
         const activeSrc = this.getActiveSource();
-        if (activeSrc) candidateSources.push(activeSrc);
+        if (activeSrc && !activeSrc.disabled) candidateSources.push(activeSrc);
         for (const s of this.sources) {
+            if (s.disabled) continue; // 禁用源绝不参与播放与容灾
             if (activeSrc && s.id === activeSrc.id) continue;
             candidateSources.push(s);
         }

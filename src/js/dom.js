@@ -103,6 +103,8 @@ export const dom = {
     lxSourceUrlInput: document.getElementById("lxSourceUrlInput"),
     loadLxSourceBtn: document.getElementById("loadLxSourceBtn"),
     lxSourceList: document.getElementById("lxSourceList"),
+    lxSourceProbeAllBtn: document.getElementById("lxSourceProbeAllBtn"),
+    lxSourceUpdateAllBtn: document.getElementById("lxSourceUpdateAllBtn"),
     layoutToggleBtn: document.getElementById("layoutToggleBtn"),
     radarGenreList: document.getElementById("radarGenreList"),
     headerSquareBtn: document.getElementById("headerSquareBtn"),
