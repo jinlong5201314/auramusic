@@ -193,10 +193,10 @@ export class LXMusicProgressBarVisualizer {
             this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
         }
 
-        // 方块积木几何规格：柱宽 3.5px，间距 1.5px (每 5px 一根柱子)
-        // 全宽通栏下自动延伸为 64 ~ 180 根宽域高精频谱柱
-        const pitch = 5.0;
-        const newCount = Math.max(32, Math.min(Math.floor(this.width / pitch), 180));
+        // 方块积木几何规格：柱宽 7.5px，间距 2.5px (每 10px 一根柱子，列数减半更清晰大气)
+        // 650px 居中通栏下精确容纳 65 根宽域高精频谱柱
+        const pitch = 10.0;
+        const newCount = Math.max(16, Math.min(Math.floor(this.width / pitch), 90));
 
         if (newCount !== this.barCount) {
             this.barCount = newCount;
@@ -335,15 +335,15 @@ export class LXMusicProgressBarVisualizer {
         const count = this.bars.length;
         if (count === 0) return;
 
-        // 方块积木参数 (与 LXMusic Web 1:1 精确对齐方形积木：3.8px x 3.8px，间距 1.2px)
-        const cubeHeight = 3.8;
-        const cubeGap = 1.2;
+        // 方块积木参数 (列数减半版：方块宽 7.5px，高 4.0px，水平间距 2.5px，垂直间隙 1.5px)
+        const cubeHeight = 4.0;
+        const cubeGap = 1.5;
         const cubePitch = cubeHeight + cubeGap;
         const maxH = Math.max(cubePitch * 2, h - 4);
         const maxCubes = Math.floor(maxH / cubePitch);
 
-        const barW = 3.8;
-        const colGap = 1.2;
+        const barW = 7.5;
+        const colGap = 2.5;
         const totalSpectrumW = count * barW + (count - 1) * colGap;
         const startX = Math.max(0, Math.floor((w - totalSpectrumW) / 2));
 
@@ -418,7 +418,7 @@ export class LXMusicProgressBarVisualizer {
                 ctx.save();
                 ctx.fillStyle = cubeRatio > 0.65 ? this.colors.top : this.colors.base;
                 ctx.globalAlpha = 0.88;
-                this.fillRoundedRect(ctx, x, cubeY, barW, cubeHeight, 0.6);
+                this.fillRoundedRect(ctx, x, cubeY, barW, cubeHeight, 1.0);
                 ctx.restore();
             }
 
@@ -432,7 +432,7 @@ export class LXMusicProgressBarVisualizer {
                 ctx.shadowColor = this.colors.glow;
                 ctx.shadowBlur = 3;
                 ctx.globalAlpha = 0.95;
-                this.fillRoundedRect(ctx, x, peakY, barW, cubeHeight, 0.6);
+                this.fillRoundedRect(ctx, x, peakY, barW, cubeHeight, 1.0);
                 ctx.restore();
             }
         }
