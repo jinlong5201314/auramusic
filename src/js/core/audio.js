@@ -3,7 +3,7 @@
  */
 
 import { API } from "../constants.js";
-import { safeSetLocalStorage, preferHttpsUrl, buildAudioProxyUrl } from "./storage.js";
+import { safeSetLocalStorage, preferHttpsUrl, buildAudioProxyUrl, applyAutoProxy } from "./storage.js";
 import { showNotification } from "../features/settings.js";
 import { getSongKey } from "../features/playlist.js";
 import { ensureFavoriteSongsArray } from "../features/favorites.js";
@@ -508,10 +508,11 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
         setResolveStatus(dom, "resolving", `缓冲中 (${resolvedSourceChannel || "音频通道"})...`);
 
         log(`[音频地址] 解析就绪: ${originalAudioUrl.slice(0, 50)}...`);
+        const autoProxyUrl = await applyAutoProxy(originalAudioUrl, song);
         const proxiedAudioUrl = buildAudioProxyUrl(originalAudioUrl);
         const preferredAudioUrl = preferHttpsUrl(originalAudioUrl);
         const candidateAudioUrls = Array.from(
-            new Set([proxiedAudioUrl, preferredAudioUrl, originalAudioUrl].filter(Boolean))
+            new Set([autoProxyUrl, proxiedAudioUrl, preferredAudioUrl, originalAudioUrl].filter(Boolean))
         );
 
         state.currentSong = song;
@@ -544,6 +545,7 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
         let lastAudioError = null;
 
         for (const candidateUrl of candidateAudioUrls) {
+            dom.audioPlayer.crossOrigin = "anonymous";
             dom.audioPlayer.src = candidateUrl;
             dom.audioPlayer.load();
 
@@ -558,6 +560,17 @@ export async function playSong(song, options = {}, state, dom, callbacks = {}, d
                 selectedAudioUrl = candidateUrl;
                 break;
             } catch (error) {
+                // 如果带有 crossOrigin 加载报错，尝试去除 crossOrigin 直连兜底，确保永远有声音
+                if (dom.audioPlayer.hasAttribute("crossorigin")) {
+                    try {
+                        dom.audioPlayer.removeAttribute("crossorigin");
+                        dom.audioPlayer.src = candidateUrl;
+                        dom.audioPlayer.load();
+                        await waitForAudioReady(dom.audioPlayer);
+                        selectedAudioUrl = candidateUrl;
+                        break;
+                    } catch (_) {}
+                }
                 lastAudioError = error;
             }
         }

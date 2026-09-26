@@ -255,20 +255,37 @@ export function toAbsoluteUrl(url) {
 
 export function buildAudioProxyUrl(url) {
     if (!url || typeof url !== "string") return url;
+    if (url.startsWith("/proxy?") || url.startsWith("/api/")) return url;
+    return `/proxy?target=${encodeURIComponent(url)}`;
+}
+
+export async function applyAutoProxy(url, song = {}) {
+    if (!url || typeof url !== "string") return url;
+    if (url.startsWith("/proxy?") || url.startsWith("/api/")) return url;
+
+    const isHttpsEnv = typeof window !== "undefined" && window.location.protocol === "https:";
+    const isHttpLink = url.startsWith("http://");
+    const probeUrl = (isHttpsEnv && isHttpLink) ? url.replace(/^http:\/\//i, "https://") : url;
 
     try {
-        const parsedUrl = new URL(url, window.location.href);
-        if (parsedUrl.protocol === "https:") {
-            return parsedUrl.toString();
-        }
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1800);
+        const response = await fetch(probeUrl, {
+            method: "GET",
+            headers: { "Range": "bytes=0-1" },
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
 
-        if (parsedUrl.protocol === "http:" && /(^|\.)kuwo\.cn$/i.test(parsedUrl.hostname)) {
-            return `${API.baseUrl}?target=${encodeURIComponent(parsedUrl.toString())}`;
+        if (response.ok) {
+            console.log(`[Proxy] Auto-proxy probe success (Direct Play): ${song?.name || "Music"} via ${probeUrl}`);
+            return probeUrl;
         }
-
-        return parsedUrl.toString();
-    } catch (error) {
-        console.warn("无法解析音频地址，跳过代理", error);
-        return url;
+    } catch (e) {
+        console.warn(`[Proxy] Auto-proxy probe failed (CORS risk or unreachable), falling back to proxy: ${song?.name || "Music"}`);
     }
+
+    const proxiedUrl = `/proxy?target=${encodeURIComponent(url)}`;
+    console.log(`[Proxy] Proxy fallback: ${song?.name || "Music"} -> ${proxiedUrl}`);
+    return proxiedUrl;
 }
