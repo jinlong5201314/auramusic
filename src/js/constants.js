@@ -85,7 +85,7 @@ export const PALETTE_STORAGE_KEY = "paletteCache.v3";
 export const LAST_SEARCH_STATE_STORAGE_KEY = "lastSearchState.v1";
 export const PLAYLIST_EXPORT_VERSION = 1;
 export const FAVORITE_EXPORT_VERSION = 1;
-export const APP_VERSION = "v4.3.5";
+export const APP_VERSION = "v4.3.6";
 
 export const BACKGROUND_TRANSITION_DURATION = 850;
 export const PALETTE_APPLY_DELAY = 140;
