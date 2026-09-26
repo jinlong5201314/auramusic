@@ -410,7 +410,7 @@ export class LXMusicProgressBarVisualizer {
             const x = startX + i * (barW + colGap);
             const activeCubes = Math.floor(bar.h / cubePitch);
 
-            // 绘制该列堆叠方块积木
+            // 绘制该列堆叠方块积木 (经典 LXMusic Web 纯方形直角积木)
             for (let c = 0; c < activeCubes; c++) {
                 const cubeY = h - (c + 1) * cubePitch;
                 const cubeRatio = c / maxCubes;
@@ -418,7 +418,7 @@ export class LXMusicProgressBarVisualizer {
                 ctx.save();
                 ctx.fillStyle = cubeRatio > 0.65 ? this.colors.top : this.colors.base;
                 ctx.globalAlpha = 0.88;
-                this.fillRoundedRect(ctx, x, cubeY, barW, cubeHeight, 1.0);
+                ctx.fillRect(x, cubeY, barW, cubeHeight);
                 ctx.restore();
             }
 
@@ -432,7 +432,7 @@ export class LXMusicProgressBarVisualizer {
                 ctx.shadowColor = this.colors.glow;
                 ctx.shadowBlur = 3;
                 ctx.globalAlpha = 0.95;
-                this.fillRoundedRect(ctx, x, peakY, barW, cubeHeight, 1.0);
+                ctx.fillRect(x, peakY, barW, cubeHeight);
                 ctx.restore();
             }
         }

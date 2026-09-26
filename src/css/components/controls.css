@@ -1078,7 +1078,7 @@ input[type="range"]:active::-moz-range-thumb {
     max-width: 100%;
 }
 
-/* ─── 播放控制底栏音频频谱律动动画 (底部贴合，全栏等高，居中650px) ──── */
+/* ─── 播放控制底栏音频频谱律动动画 (底部贴合，全栏等高，居中650px，纯直角平直底边) ──── */
 .controls-spectrum {
     position: absolute;
     bottom: 0;
@@ -1091,7 +1091,7 @@ input[type="range"]:active::-moz-range-thumb {
     z-index: 0;
     opacity: 0.85;
     overflow: hidden;
-    border-radius: 24px;
+    border-radius: 0;
 }
 
 .controls-spectrum-canvas {
