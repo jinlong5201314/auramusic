@@ -1078,19 +1078,20 @@ input[type="range"]:active::-moz-range-thumb {
     max-width: 100%;
 }
 
-/* ─── 播放控制底栏全宽顶沿音频频谱律动动画 (方案2：贯穿底栏顶部外沿) ──── */
+/* ─── 播放控制底栏音频频谱律动动画 (底部贴合，全栏等高，居中650px) ──── */
 .controls-spectrum {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    height: 18px;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 650px;
+    max-width: 100%;
+    height: 100%;
     pointer-events: none;
-    z-index: 1;
-    opacity: 0.9;
+    z-index: 0;
+    opacity: 0.85;
     overflow: hidden;
-    border-radius: 24px 24px 0 0;
+    border-radius: 24px;
 }
 
 .controls-spectrum-canvas {

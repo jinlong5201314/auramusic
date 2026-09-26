@@ -335,15 +335,15 @@ export class LXMusicProgressBarVisualizer {
         const count = this.bars.length;
         if (count === 0) return;
 
-        // 方块积木参数 (顶沿 18px 黄金纤细方块)
-        const cubeHeight = 2.5;
-        const cubeGap = 1.0;
+        // 方块积木参数 (与 LXMusic Web 1:1 精确对齐方形积木：3.8px x 3.8px，间距 1.2px)
+        const cubeHeight = 3.8;
+        const cubeGap = 1.2;
         const cubePitch = cubeHeight + cubeGap;
-        const maxH = Math.max(cubePitch * 2, h - 1);
+        const maxH = Math.max(cubePitch * 2, h - 4);
         const maxCubes = Math.floor(maxH / cubePitch);
 
-        const barW = 3.5;
-        const colGap = 1.5;
+        const barW = 3.8;
+        const colGap = 1.2;
         const totalSpectrumW = count * barW + (count - 1) * colGap;
         const startX = Math.max(0, Math.floor((w - totalSpectrumW) / 2));
 
