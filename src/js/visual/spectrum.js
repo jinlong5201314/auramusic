@@ -56,7 +56,7 @@ export class LXMusicProgressBarVisualizer {
         this.audio = dom?.audioPlayer || document.getElementById("audioPlayer");
         this.container = dom?.controlsSpectrum || document.getElementById("controlsSpectrum");
         this.canvas = dom?.controlsSpectrumCanvas || document.getElementById("controlsSpectrumCanvas");
-        this.progressBarWrap = document.getElementById("progressBarWrap") || this.container?.parentElement;
+        this.controlsBar = document.querySelector(".controls") || this.container?.parentElement;
 
         this.ctx = null;
         this.animationId = null;
@@ -97,10 +97,10 @@ export class LXMusicProgressBarVisualizer {
         this.updateThemeColors();
         this.updateDimensions();
 
-        // 监听尺寸变化（跟随进度条容器）
-        if (typeof ResizeObserver !== "undefined" && this.progressBarWrap) {
+        // 监听尺寸变化（跟随播放控制栏全宽）
+        if (typeof ResizeObserver !== "undefined" && this.controlsBar) {
             this.resizeObserver = new ResizeObserver(() => this.updateDimensions());
-            this.resizeObserver.observe(this.progressBarWrap);
+            this.resizeObserver.observe(this.controlsBar);
         } else {
             window.addEventListener("resize", () => this.updateDimensions(), { passive: true });
         }
@@ -177,13 +177,13 @@ export class LXMusicProgressBarVisualizer {
     }
 
     /**
-     * 根据当前进度条的实际宽度重新规划独立频柱
+     * 根据当前控制栏的实际全宽重新规划独立频柱
      */
     updateDimensions() {
         if (!this.container || !this.canvas) return;
         const rect = this.container.getBoundingClientRect();
-        this.width = Math.max(rect.width, 120);
-        this.height = Math.max(rect.height, 24);
+        this.width = Math.max(rect.width, 300);
+        this.height = Math.max(rect.height, 16);
         this.dpr = Math.min(window.devicePixelRatio || 1, 2);
 
         this.canvas.width = Math.floor(this.width * this.dpr);
@@ -193,9 +193,10 @@ export class LXMusicProgressBarVisualizer {
             this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
         }
 
-        // 方块积木几何规格：柱宽 3.5px，间距 1.5px
+        // 方块积木几何规格：柱宽 3.5px，间距 1.5px (每 5px 一根柱子)
+        // 全宽通栏下自动延伸为 64 ~ 180 根宽域高精频谱柱
         const pitch = 5.0;
-        const newCount = Math.max(16, Math.min(Math.floor(this.width / pitch), 96));
+        const newCount = Math.max(32, Math.min(Math.floor(this.width / pitch), 180));
 
         if (newCount !== this.barCount) {
             this.barCount = newCount;
@@ -334,11 +335,11 @@ export class LXMusicProgressBarVisualizer {
         const count = this.bars.length;
         if (count === 0) return;
 
-        // 方块积木参数
-        const cubeHeight = 3;
-        const cubeGap = 1.2;
+        // 方块积木参数 (顶沿 18px 黄金纤细方块)
+        const cubeHeight = 2.5;
+        const cubeGap = 1.0;
         const cubePitch = cubeHeight + cubeGap;
-        const maxH = Math.max(cubePitch * 2, h - 2);
+        const maxH = Math.max(cubePitch * 2, h - 1);
         const maxCubes = Math.floor(maxH / cubePitch);
 
         const barW = 3.5;

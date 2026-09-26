@@ -313,15 +313,6 @@ html:not(.mobile-view) .transport-controls {
     z-index: 2;
 }
 
-.progress-bar-wrap {
-    position: relative;
-    flex: 1 1 auto;
-    display: flex;
-    align-items: center;
-    height: 32px;
-    min-width: 80px;
-}
-
 .control-trailing {
     display: flex;
     align-items: center;
@@ -339,8 +330,7 @@ html:not(.mobile-view) .transport-controls {
     white-space: nowrap;
 }
 
-.progress-container input[type="range"],
-.progress-bar-wrap input[type="range"] {
+.progress-container input[type="range"] {
     width: 100%;
     flex: 1;
     height: 6px;
@@ -1088,18 +1078,19 @@ input[type="range"]:active::-moz-range-thumb {
     max-width: 100%;
 }
 
-/* ─── 进度条音频频谱律动动画 (位于进度条正上方，严格等宽，互不干扰) ──── */
+/* ─── 播放控制底栏全宽顶沿音频频谱律动动画 (方案2：贯穿底栏顶部外沿) ──── */
 .controls-spectrum {
     position: absolute;
-    bottom: calc(50% + 4px);
+    top: 0;
     left: 0;
     right: 0;
     width: 100%;
-    height: 22px;
+    height: 18px;
     pointer-events: none;
     z-index: 1;
     opacity: 0.9;
     overflow: hidden;
+    border-radius: 24px 24px 0 0;
 }
 
 .controls-spectrum-canvas {
