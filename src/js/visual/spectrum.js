@@ -1,20 +1,13 @@
 /**
  * Solara 播放控制界面底部流体音频频谱律动动画引擎 (Bottom Spectrum Visualizer)
- * 仿照 LXMusic Web (洛雪 Web 版) 经典动态频段方块积木 (Cubes) 与动态流体均衡器
- * 核心升级：
- * 1. 采用高对比对应色算法：色相逆向互补偏移 160°，随主题智能联动但绝对不重合，清晰醒目；
- * 2. 深度扩大动态振幅 (0 ~ 55px)，强劲节奏打击感与悬浮峰值方块 (Peak Hold)，律动极其剧烈明显；
- * 3. 仿照洛雪默认采用 Cubes 方块矩阵，支持点击底栏在 方块积木 / 连体光柱 / 流体声波 间无缝切换；
- * 4. 具备 Web Audio 实时声频分析能力与超高灵敏物理声学反应引擎双通道无缝容灾。
+ * 纯净声学规整频段均衡器 (Fixed Frequency Equalizer)
+ * 
+ * 核心原则：
+ * 1. 绝不劫持 <audio> 节点 (杜绝任何跨域音频导致静音的风险)，保证系统原生音频播放 100% 正常；
+ * 2. 纯原地垂直弹跳，绝对不进行任何横向行波滚动，规整不杂乱；
+ * 3. 没音乐或暂停时立即彻底清空并停止渲染，0% CPU 占用；
+ * 4. 颜色与主题色形成鲜明互补对应（色相旋转 160°），绝不重合，清晰醒目。
  */
-
-const STORAGE_KEY_MODE = "solaraSpectrumMode";
-const MODES = ["cubes", "bars", "wave"];
-const MODE_NAMES = {
-    cubes: "洛雪经典方块 (Cubes)",
-    bars: "连体高光频柱 (Bars)",
-    wave: "灵动流体声波 (Wave)"
-};
 
 function parseColorToHsl(str) {
     str = String(str || "").trim();
@@ -33,7 +26,7 @@ function parseColorToHsl(str) {
     } else if (str.startsWith("rgb")) {
         const m = str.match(/\(([^)]+)\)/);
         if (m) {
-            const parts = m[1].split(/[,\s/]+/).map(p => parseFloat(p.trim())).filter(n => !isNaN(n));
+            const parts = m[1].split(/[,\\s/]+/).map(p => parseFloat(p.trim())).filter(n => !isNaN(n));
             if (parts.length >= 3) {
                 r = parts[0]; g = parts[1]; b = parts[2];
             }
@@ -72,30 +65,36 @@ export class BottomSpectrumVisualizer {
         this.height = 0;
         this.dpr = 1;
 
-        // 动效模式：默认经典洛雪方块 (cubes)
-        this.mode = localStorage.getItem(STORAGE_KEY_MODE) || "cubes";
-        if (!MODES.includes(this.mode)) this.mode = "cubes";
-
-        this.energy = 0;
-        this.time = 0;
+        // 32 根固定独立频段均衡器柱 (原地上下跳跃，杜绝滚动)
+        this.barCount = 32;
         this.bars = [];
+        this.initFixedBands();
 
-        // 对应色系调色板缓存 (与主题联动但绝对不同色)
+        // 对应色系
         this.colors = {
             base: "#f59e0b",
             top: "#fbbf24",
-            peak: "#fef08a",
-            glow: "rgba(245, 158, 11, 0.4)",
-            line: "rgba(245, 158, 11, 0.25)"
+            peak: "#fef08a"
         };
 
-        // Web Audio API 分析器
-        this.audioContext = null;
-        this.analyser = null;
-        this.dataArray = null;
-        this.hasRealAudioData = false;
-
         this.init();
+    }
+
+    initFixedBands() {
+        this.bars = [];
+        for (let i = 0; i < this.barCount; i++) {
+            // 每根柱子有独立的本征特征（绝无空间行波项，每个频柱纯粹在原地起伏）
+            this.bars.push({
+                h: 0,
+                target: 0,
+                peak: 0,
+                peakHold: 0,
+                peakSpeed: 0,
+                // 伪随机独立共振系数 (无线性相位差)
+                weight: 0.4 + 0.6 * Math.sin((i * 17.3 + 5.1) % Math.PI),
+                decay: 0.18 + 0.08 * (i % 3)
+            });
+        }
     }
 
     init() {
@@ -114,83 +113,33 @@ export class BottomSpectrumVisualizer {
             window.addEventListener("resize", () => this.updateDimensions(), { passive: true });
         }
 
-        // 绑定音频播放生命周期事件
+        // 绑定音频播放生命周期事件：绝不劫持音频流
         if (this.audio) {
-            const onPlayTrigger = () => {
-                this.tryInitWebAudio();
-                this.start();
-            };
-            this.audio.addEventListener("play", onPlayTrigger);
-            this.audio.addEventListener("playing", onPlayTrigger);
-            this.audio.addEventListener("timeupdate", () => {
-                if (!this.isRunning && !this.audio.paused) this.start();
-            });
-            this.audio.addEventListener("pause", () => this.stopGradually());
-            this.audio.addEventListener("ended", () => this.stopGradually());
-            this.audio.addEventListener("volumechange", () => {
-                if (this.isRunning) this.renderFrame();
-            });
+            const onPlay = () => this.start();
+            const onStop = () => this.stopImmediately();
+
+            this.audio.addEventListener("play", onPlay);
+            this.audio.addEventListener("playing", onPlay);
+            this.audio.addEventListener("pause", onStop);
+            this.audio.addEventListener("ended", onStop);
+            this.audio.addEventListener("emptied", onStop);
+            this.audio.addEventListener("error", onStop);
         }
 
-        // 页面前后台切出挂起
+        // 页面可见性管理
         document.addEventListener("visibilitychange", () => {
             if (document.hidden) {
-                if (this.isRunning) {
-                    cancelAnimationFrame(this.animationId);
-                    this.isRunning = false;
-                }
-            } else if (this.audio && !this.audio.paused) {
+                this.stopImmediately();
+            } else if (this.audio && !this.audio.paused && !this.audio.ended) {
                 this.start();
             }
         });
 
-        // 点击底栏频谱区域快速切换模式
-        this.container.addEventListener("click", (e) => {
-            e.stopPropagation();
-            this.switchNextMode();
-        });
-
-        if (this.audio && !this.audio.paused) {
+        // 初始状态：若未在播放，完全清空停止
+        if (this.audio && !this.audio.paused && !this.audio.ended) {
             this.start();
         } else {
-            this.renderRestState();
-        }
-    }
-
-    /**
-     * 尝试接入 Web Audio API 获得 100% 真实频段
-     */
-    tryInitWebAudio() {
-        if (this.analyser || !this.audio) return;
-        try {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (!AudioCtx) return;
-            if (!this.audioContext) {
-                this.audioContext = new AudioCtx();
-            }
-            if (this.audioContext.state === "suspended") {
-                this.audioContext.resume().catch(() => {});
-            }
-
-            // 优先尝试与媒体节点建立连接
-            if (!this.audioSource) {
-                try {
-                    this.audioSource = this.audioContext.createMediaElementSource(this.audio);
-                    this.analyser = this.audioContext.createAnalyser();
-                    this.analyser.fftSize = 256;
-                    this.analyser.smoothingTimeConstant = 0.72;
-                    this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
-
-                    this.audioSource.connect(this.analyser);
-                    this.analyser.connect(this.audioContext.destination);
-                    console.log("[Visualizer] Web Audio 实时分析器装载成功");
-                } catch (corsErr) {
-                    // 若受跨域 CORS 影响或已被占用，平滑降级为高灵敏拟真引擎
-                    console.log("[Visualizer] 启用高动态自适应声学共振引擎:", corsErr.message);
-                }
-            }
-        } catch (e) {
-            console.warn("[Visualizer] AudioContext 初始化跳过:", e.message);
+            this.stopImmediately();
         }
     }
 
@@ -198,7 +147,7 @@ export class BottomSpectrumVisualizer {
         if (!this.container || !this.canvas) return;
         const rect = this.container.getBoundingClientRect();
         this.width = Math.max(rect.width, 240);
-        this.height = Math.max(rect.height, 40);
+        this.height = Math.max(rect.height, 36);
         this.dpr = Math.min(window.devicePixelRatio || 1, 2);
 
         this.canvas.width = Math.floor(this.width * this.dpr);
@@ -208,29 +157,11 @@ export class BottomSpectrumVisualizer {
             this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
         }
 
-        this.initBars();
-        if (!this.isRunning) this.renderRestState();
-    }
-
-    initBars() {
-        // 仿照洛雪 targetPitch: 5~6px，大幅增加频段柱数量，填满控制栏
-        const targetPitch = 6;
-        const availableW = this.width - 24;
-        const count = Math.max(48, Math.min(Math.floor(availableW / targetPitch), 128));
-        this.bars = [];
-        for (let i = 0; i < count; i++) {
-            this.bars.push({
-                h: 0,
-                target: 0,
-                peak: 0,
-                peakHold: 0,
-                peakSpeed: 0
-            });
-        }
+        if (!this.isRunning) this.stopImmediately();
     }
 
     /**
-     * 核心算法：根据主题色推导强反差、高对比、绝不重合的“相对应变幻色系”
+     * 核心对应色计算：随主题联动但绝对不同色
      */
     updateThemeColors() {
         if (typeof window === "undefined") return;
@@ -240,91 +171,68 @@ export class BottomSpectrumVisualizer {
 
         const { h, s } = parseColorToHsl(p);
 
-        // 互补对比色相：在色相环上旋转 155° ~ 195° 对应区间，保证与当前主题色具有极高视觉辨识度
-        const compH1 = (h + 155) % 360;
-        const compH2 = (h + 195) % 360;
-        const compHPeak = (h + 175) % 360;
-        const sat = Math.max(s, 92); // 饱和度维持在 92% 以上，色泽饱满不发灰
+        // 互补对比色相：旋转 160°，确保绝对不与当前主题色重合撞色
+        const compH1 = (h + 160) % 360;
+        const compH2 = (h + 190) % 360;
+        const sat = Math.max(s, 90);
 
         if (isDark) {
-            // 暗色玻璃背景：使用通透鲜艳的霓虹发光色，高纯度，明度拉高
+            // 深色背景下使用高对比明亮金橙/青翠色
             this.colors = {
                 base: `hsl(${compH1}, ${sat}%, 58%)`,
                 top: `hsl(${compH2}, 100%, 72%)`,
-                peak: `hsl(${compHPeak}, 100%, 84%)`,
-                glow: `hsla(${compHPeak}, 100%, 70%, 0.45)`,
-                line: `hsla(${compHPeak}, 95%, 65%, 0.28)`,
-                cubeBg: `hsla(${compH1}, ${sat}%, 55%, 0.88)`
+                peak: `hsl(${compH2}, 100%, 84%)`,
+                glow: `hsla(${compH2}, 100%, 70%, 0.4)`
             };
         } else {
-            // 浅色玻璃背景：为了防止泛白看不清，明度调至 38%~48% 浓郁宝石色，轮廓极其鲜明
+            // 浅色背景下使用浓郁宝石对比色，清晰分明不发白
             this.colors = {
                 base: `hsl(${compH1}, ${sat}%, 38%)`,
                 top: `hsl(${compH2}, 100%, 48%)`,
-                peak: `hsl(${compHPeak}, 100%, 30%)`,
-                glow: `hsla(${compHPeak}, 100%, 42%, 0.35)`,
-                line: `hsla(${compHPeak}, 95%, 45%, 0.28)`,
-                cubeBg: `hsla(${compH1}, ${sat}%, 40%, 0.92)`
+                peak: `hsl(${compH2}, 100%, 30%)`,
+                glow: `hsla(${compH2}, 100%, 42%, 0.3)`
             };
         }
-    }
-
-    switchNextMode() {
-        const nextIdx = (MODES.indexOf(this.mode) + 1) % MODES.length;
-        this.mode = MODES[nextIdx];
-        try {
-            localStorage.setItem(STORAGE_KEY_MODE, this.mode);
-        } catch {}
-
-        const modeName = MODE_NAMES[this.mode] || this.mode;
-        if (typeof window.showNotification === "function") {
-            window.showNotification(`🎵 底部频谱切换为：${modeName}`);
-        }
-        if (!this.isRunning) this.renderRestState();
     }
 
     start() {
         if (this.isRunning) return;
+        if (!this.audio || this.audio.paused || this.audio.ended) return;
         this.isRunning = true;
-        this.energy = Math.max(this.energy, 0.4);
         this.loop();
     }
 
-    stopGradually() {
-        // 自然能量阻尼递减
+    /**
+     * 没音乐或暂停时立即彻底清空停止，绝无残留跳动
+     */
+    stopImmediately() {
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+        this.isRunning = false;
+        for (let i = 0; i < this.bars.length; i++) {
+            this.bars[i].h = 0;
+            this.bars[i].target = 0;
+            this.bars[i].peak = 0;
+            this.bars[i].peakHold = 0;
+            this.bars[i].peakSpeed = 0;
+        }
+        if (this.ctx) {
+            this.ctx.clearRect(0, 0, this.width, this.height);
+        }
     }
 
     loop() {
         if (!this.isRunning) return;
 
-        const isPlaying = this.audio && !this.audio.paused && !this.audio.ended;
-
-        if (isPlaying) {
-            this.energy += (1 - this.energy) * 0.16; // 攻击响应极快
-        } else {
-            this.energy += (0 - this.energy) * 0.08;
-        }
-
-        this.time += 0.045;
-
-        // 尝试采集真实音频数据
-        if (this.analyser && this.dataArray) {
-            this.analyser.getByteFrequencyData(this.dataArray);
-            let sum = 0;
-            for (let i = 0; i < 16; i++) sum += this.dataArray[i];
-            this.hasRealAudioData = sum > 10;
-        }
-
-        this.renderFrame();
-
-        // 待机完全静止后归零
-        if (!isPlaying && this.energy < 0.008) {
-            this.energy = 0;
-            this.isRunning = false;
-            this.renderRestState();
+        // 强校验：如果已暂停或停止，立刻停止渲染并清空
+        if (!this.audio || this.audio.paused || this.audio.ended) {
+            this.stopImmediately();
             return;
         }
 
+        this.renderFrame();
         this.animationId = requestAnimationFrame(() => this.loop());
     }
 
@@ -337,263 +245,102 @@ export class BottomSpectrumVisualizer {
         ctx.clearRect(0, 0, w, h);
         this.updateThemeColors();
 
-        const vol = this.audio ? (this.audio.muted ? 0 : this.audio.volume) : 0.8;
-        const effectiveEnergy = this.energy * vol;
+        const count = this.barCount;
+        const maxH = h - 6;
 
-        switch (this.mode) {
-            case "bars":
-                this.drawSpectrumBars(w, h, effectiveEnergy);
-                break;
-            case "wave":
-                this.drawFluidWave(w, h, effectiveEnergy);
-                break;
-            case "cubes":
-            default:
-                this.drawLxCubes(w, h, effectiveEnergy);
-                break;
-        }
-    }
-
-    renderRestState() {
-        if (!this.ctx) return;
-        const ctx = this.ctx;
-        const w = this.width;
-        const h = this.height;
-        ctx.clearRect(0, 0, w, h);
-
-        this.updateThemeColors();
-
-        // 待机状态：清晰优雅的对应色微光底轨
-        ctx.save();
-        ctx.strokeStyle = this.colors.line;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(12, h - 2);
-        ctx.lineTo(w - 12, h - 2);
-        ctx.stroke();
-        ctx.restore();
-    }
-
-    /**
-     * 模式 1：仿照 LXMusic 经典高动态方块积木 (Cubes / Blocks)
-     * 极高视觉张力：小方块逐级向上爆发堆叠，带悬停重力下落峰值 (Peak Block)
-     */
-    drawLxCubes(w, h, energy) {
-        const ctx = this.ctx;
-        const count = this.bars.length;
-        if (count === 0) return;
-
-        const availableW = w - 24;
-        const colGap = 2;
-        const barW = Math.max(2.2, (availableW - (count - 1) * colGap) / count);
-        const startX = 12;
-
-        // 方块参数：高 3.5px，垂直间隙 1.2px
-        const cubeHeight = 3.5;
+        // 方块积木尺寸参数
+        const cubeHeight = 3;
         const cubeGap = 1.2;
         const cubePitch = cubeHeight + cubeGap;
-        const maxCubes = Math.floor((h - 6) / cubePitch);
-        const maxBarH = maxCubes * cubePitch;
+        const maxCubes = Math.floor(maxH / cubePitch);
+
+        // 居中规整排布：左右留出均等空间，端正不杂乱
+        const barW = 4;
+        const colGap = 2.5;
+        const totalSpectrumW = count * barW + (count - 1) * colGap;
+        const startX = Math.max(12, Math.floor((w - totalSpectrumW) / 2));
+
+        // 基于音频实际播放时间与音量模拟真实声学固定频带跳动
+        const ct = this.audio.currentTime || 0;
+        const vol = this.audio.muted ? 0 : (this.audio.volume ?? 1);
+        if (vol <= 0.01) return;
+
+        // 模拟节拍打击动力学：BPM 128 节拍脉冲（原地垂直弹起，无横向行波）
+        const beatCycle = (ct * 2.13) % 1; // 节拍周期
+        const kickPulse = Math.pow(Math.max(0, 1 - beatCycle * 2.2), 3); // 瞬间上冲而后指数下坠
+        const snarePulse = Math.pow(Math.max(0, 1 - ((ct * 2.13 + 0.5) % 1) * 2.5), 3);
 
         for (let i = 0; i < count; i++) {
             const bar = this.bars[i];
             const ratio = i / count;
 
-            let val = 0;
-            if (this.hasRealAudioData && this.dataArray) {
-                const dataIdx = Math.floor((i / count) * (this.dataArray.length * 0.75));
-                val = (this.dataArray[dataIdx] / 255) * maxBarH * energy;
-            } else {
-                // 超强动态声学模拟 (大幅低音重锤与密集泛音爆发)
-                const kick = Math.pow(Math.sin(this.time * 5.2), 4) * Math.max(0, 1 - ratio * 1.8) * 1.3;
-                const bass = Math.sin(this.time * 3.8 + i * 0.18) * 0.5 + 0.5;
-                const mid = (Math.sin(this.time * 6.5 + i * 0.42) * 0.5 + 0.5) * (1 - Math.abs(ratio - 0.4));
-                const treble = (Math.sin(this.time * 11.2 + i * 0.85) * 0.5 + 0.5) * (0.3 + ratio * 0.7);
+            let targetHeight = 0;
 
-                const sim = (kick * 0.65 + bass * 0.4 + mid * 0.45 + treble * 0.35) * maxBarH * energy;
-                val = sim;
+            if (ratio < 0.28) {
+                // 低频区 (0~8)：受大鼓与贝斯重锤垂直冲击
+                const bassWeight = 1 - ratio * 2;
+                targetHeight = (kickPulse * 0.75 * bassWeight + 0.25 * bar.weight) * maxH * vol;
+            } else if (ratio < 0.65) {
+                // 中频区 (9~20)：人声与主旋律节奏
+                const midWeight = Math.sin((ratio - 0.28) / 0.37 * Math.PI);
+                const subPulse = Math.sin(ct * 6.5 + bar.weight * 4) * 0.5 + 0.5;
+                targetHeight = (snarePulse * 0.45 * midWeight + subPulse * 0.55 * bar.weight) * maxH * 0.85 * vol;
+            } else {
+                // 高频区 (21~31)：镲片泛音与细碎闪烁
+                const shimmer = Math.sin(ct * 14.5 + bar.weight * 10) * 0.5 + 0.5;
+                targetHeight = (shimmer * 0.6 + kickPulse * 0.4) * maxH * 0.7 * vol * (0.4 + 0.6 * bar.weight);
             }
 
-            bar.target = Math.max(cubeHeight, Math.min(val, maxBarH));
-            // 极速上升，平滑回落
+            bar.target = Math.max(cubeHeight, Math.min(targetHeight, maxH));
+
+            // 原地快速上升，平滑回落
             if (bar.target > bar.h) {
-                bar.h += (bar.target - bar.h) * 0.55;
+                bar.h += (bar.target - bar.h) * 0.45;
             } else {
-                bar.h += (bar.target - bar.h) * 0.22;
+                bar.h += (bar.target - bar.h) * bar.decay;
             }
 
-            // 悬停峰值方块 (Peak Cube) 物理模拟：悬停 5 帧后受重力下坠
+            // 悬停峰值方块 (Peak Hold)：悬停后重力滑落
             if (bar.h >= bar.peak) {
                 bar.peak = bar.h;
                 bar.peakSpeed = 0;
-                bar.peakHold = 6;
+                bar.peakHold = 4;
             } else if (bar.peakHold > 0) {
                 bar.peakHold--;
             } else {
-                bar.peakSpeed += 0.35;
+                bar.peakSpeed += 0.3;
                 bar.peak = Math.max(cubeHeight, bar.peak - bar.peakSpeed);
             }
 
             const x = startX + i * (barW + colGap);
             const activeCubes = Math.floor(bar.h / cubePitch);
 
-            // 绘制一节一节的方块积木
+            // 绘制原地垂直方块积木
             for (let c = 0; c < activeCubes; c++) {
                 const cubeY = h - (c + 1) * cubePitch;
                 const cubeRatio = c / maxCubes;
 
                 ctx.save();
-                // 自底向上颜色渐变加亮 (由深色基调跃升为高光)
                 ctx.fillStyle = cubeRatio > 0.6 ? this.colors.top : this.colors.base;
                 ctx.globalAlpha = 0.88;
-                this.fillRoundedRect(ctx, x, cubeY, barW, cubeHeight, 0.8);
+                this.fillRoundedRect(ctx, x, cubeY, barW, cubeHeight, 0.6);
                 ctx.restore();
             }
 
-            // 绘制顶部浮动峰值方块 (带有高亮霓虹光晕)
-            if (energy > 0.1 && bar.peak > cubePitch * 1.5) {
+            // 绘制顶部悬停峰值小方块
+            if (bar.peak > cubePitch * 1.5) {
                 const peakCubeIdx = Math.floor(bar.peak / cubePitch);
                 const peakY = h - (peakCubeIdx + 1) * cubePitch;
 
                 ctx.save();
                 ctx.fillStyle = this.colors.peak;
                 ctx.shadowColor = this.colors.glow;
-                ctx.shadowBlur = 5;
-                ctx.globalAlpha = 1.0;
-                this.fillRoundedRect(ctx, x, peakY, barW, cubeHeight, 0.8);
+                ctx.shadowBlur = 4;
+                ctx.globalAlpha = 0.95;
+                this.fillRoundedRect(ctx, x, peakY, barW, cubeHeight, 0.6);
                 ctx.restore();
             }
         }
-    }
-
-    /**
-     * 模式 2：连体高光频柱 (Bars)
-     */
-    drawSpectrumBars(w, h, energy) {
-        const ctx = this.ctx;
-        const count = this.bars.length;
-        if (count === 0) return;
-
-        const maxBarH = h - 6;
-        const colGap = 2;
-        const availableW = w - 24;
-        const barW = Math.max(2.2, (availableW - (count - 1) * colGap) / count);
-        const startX = 12;
-
-        const grad = ctx.createLinearGradient(0, h, 0, h - maxBarH);
-        grad.addColorStop(0, this.colors.base);
-        grad.addColorStop(1, this.colors.top);
-
-        for (let i = 0; i < count; i++) {
-            const bar = this.bars[i];
-            const ratio = i / count;
-
-            let val = 0;
-            if (this.hasRealAudioData && this.dataArray) {
-                const dataIdx = Math.floor((i / count) * (this.dataArray.length * 0.75));
-                val = (this.dataArray[dataIdx] / 255) * maxBarH * energy;
-            } else {
-                const kick = Math.pow(Math.sin(this.time * 5.2), 4) * Math.max(0, 1 - ratio * 1.8) * 1.2;
-                const bass = Math.sin(this.time * 3.8 + i * 0.18) * 0.5 + 0.5;
-                const mid = (Math.sin(this.time * 6.5 + i * 0.42) * 0.5 + 0.5) * (1 - Math.abs(ratio - 0.4));
-                const treble = (Math.sin(this.time * 11.2 + i * 0.85) * 0.5 + 0.5) * (0.3 + ratio * 0.7);
-                val = (kick * 0.65 + bass * 0.4 + mid * 0.45 + treble * 0.35) * maxBarH * energy;
-            }
-
-            bar.target = Math.max(2, Math.min(val, maxBarH));
-            if (bar.target > bar.h) {
-                bar.h += (bar.target - bar.h) * 0.55;
-            } else {
-                bar.h += (bar.target - bar.h) * 0.22;
-            }
-
-            if (bar.h >= bar.peak) {
-                bar.peak = bar.h;
-                bar.peakSpeed = 0;
-                bar.peakHold = 5;
-            } else if (bar.peakHold > 0) {
-                bar.peakHold--;
-            } else {
-                bar.peakSpeed += 0.35;
-                bar.peak = Math.max(2, bar.peak - bar.peakSpeed);
-            }
-
-            const x = startX + i * (barW + colGap);
-            const barH = bar.h;
-            const y = h - barH;
-
-            ctx.save();
-            ctx.fillStyle = grad;
-            ctx.globalAlpha = 0.92;
-            this.fillRoundedRect(ctx, x, y, barW, barH, Math.min(barW / 2, 1.5));
-            ctx.restore();
-
-            // 顶部悬浮峰值条
-            if (energy > 0.1 && bar.peak > 4) {
-                ctx.save();
-                ctx.fillStyle = this.colors.peak;
-                ctx.shadowColor = this.colors.glow;
-                ctx.shadowBlur = 6;
-                ctx.globalAlpha = 1.0;
-                const peakY = Math.max(2, h - bar.peak - 2);
-                ctx.fillRect(x, peakY, barW, 2);
-                ctx.restore();
-            }
-        }
-    }
-
-    /**
-     * 模式 3：灵动流体声波渐变曲面 (Wave)
-     */
-    drawFluidWave(w, h, energy) {
-        const ctx = this.ctx;
-        const points = 36;
-        const step = (w - 24) / (points - 1);
-        const startX = 12;
-        const maxAmp = (h - 8) * energy;
-
-        const waveGrad = ctx.createLinearGradient(0, h, 0, h - maxAmp);
-        waveGrad.addColorStop(0, this.colors.line);
-        waveGrad.addColorStop(1, this.colors.glow);
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(startX, h);
-
-        const coords = [];
-        for (let i = 0; i < points; i++) {
-            const x = startX + i * step;
-            const norm = i / (points - 1);
-            const w1 = Math.sin(this.time * 4.2 + i * 0.42) * 0.5 + 0.5;
-            const w2 = Math.cos(this.time * 6.8 - i * 0.28) * 0.5 + 0.5;
-            const envelope = Math.sin(norm * Math.PI);
-            const y = h - (w1 * 0.65 + w2 * 0.35) * maxAmp * envelope - 3;
-            coords.push({ x, y });
-        }
-
-        ctx.lineTo(coords[0].x, coords[0].y);
-        for (let i = 0; i < coords.length - 1; i++) {
-            const p0 = coords[i];
-            const p1 = coords[i + 1];
-            const midX = (p0.x + p1.x) / 2;
-            const midY = (p0.y + p1.y) / 2;
-            ctx.quadraticCurveTo(p0.x, p0.y, midX, midY);
-        }
-        ctx.lineTo(coords[coords.length - 1].x, coords[coords.length - 1].y);
-        ctx.lineTo(startX + (points - 1) * step, h);
-        ctx.closePath();
-
-        ctx.fillStyle = waveGrad;
-        ctx.fill();
-
-        // 顶层流体霓虹描边
-        ctx.strokeStyle = this.colors.top;
-        ctx.lineWidth = 2.2;
-        ctx.globalAlpha = 0.95;
-        ctx.shadowColor = this.colors.glow;
-        ctx.shadowBlur = 8;
-        ctx.stroke();
-        ctx.restore();
     }
 
     fillRoundedRect(ctx, x, y, w, h, r) {
@@ -620,10 +367,10 @@ export function initBottomSpectrum(dom, state) {
     try {
         const visualizer = new BottomSpectrumVisualizer(dom, state);
         window.__solaraBottomSpectrum = visualizer;
-        console.log("[Visualizer] 播放底栏频谱律动引擎初始化成功 (仿照 LXMusic Web)");
+        console.log("[Visualizer] 播放底栏纯净规整频段均衡器已装载");
         return visualizer;
     } catch (err) {
-        console.warn("[Visualizer] 底部频谱引擎初始化异常:", err);
+        console.warn("[Visualizer] 底部频谱引擎装载异常:", err);
         return null;
     }
 }
