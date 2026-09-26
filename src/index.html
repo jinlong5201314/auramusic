@@ -15,8 +15,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=4.4.1">
-    <script src="js/i18n.js?v=4.4.1"></script>
+    <link rel="stylesheet" href="css/style.css?v=4.4.2">
+    <script src="js/i18n.js?v=4.4.2"></script>
     <script>
         (function () {
             const ua = navigator.userAgent || "";
@@ -45,7 +45,7 @@
             }
             const link = document.createElement("link");
             link.rel = "stylesheet";
-            link.href = "css/mobile.css?v=4.4.1";
+            link.href = "css/mobile.css?v=4.4.2";
             link.id = "mobileStylesheet";
             document.head.appendChild(link);
             let stableViewportHeight = window.innerHeight;
@@ -172,11 +172,14 @@
                     <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                 </button>
             </div>
-            <div class="mobile-toolbar__title" id="mobileToolbarTitle">AuraMusic <span class="mobile-version-badge">v4.4.1</span></div>
+            <div class="mobile-toolbar__title" id="mobileToolbarTitle">AuraMusic <span class="mobile-version-badge">v4.4.2</span></div>
             <div class="mobile-toolbar__actions">
                 <button class="mobile-toolbar__button theme-toggle-button" id="mobileThemeToggle" type="button" aria-label="切换深浅色模式" title="切换深浅色模式">
                     <svg class="apple-svg-icon theme-icon theme-icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v1.5m0 16v1.5m-9.5-9.5H4m16 0h1.5m-2.6-6.4-.9.9M6.4 17.6l-.9.9m0-13 .9.9m11.3 11.3.9.9"/></svg>
                     <svg class="apple-svg-icon theme-icon theme-icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4m2-2h-4"/></svg>
+                </button>
+                <button class="mobile-toolbar__button" id="mobileSettingsBtn" type="button" aria-label="打开设置" title="系统偏好与自定义音源设置">
+                    <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </button>
                 <button class="mobile-toolbar__button" id="mobileSearchToggle" type="button" aria-label="打开搜索" title="打开搜索">
                     <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
@@ -202,9 +205,9 @@
                     </div>
                     <h1 class="header-logo">AuraMusic</h1>
                     <span class="header-badge">Fluid Sound</span>
-                    <span class="header-version-badge" id="headerVersionBadge" title="系统版本">v4.4.1</span>
+                    <span class="header-version-badge" id="headerVersionBadge" title="系统版本">v4.4.2</span>
                 </div>
-                <div class="warning">灵光音乐 (AuraMusic) v4.4.1 融合流体美学与智能多源容灾调度，歌曲数据由开源社区与公共接口驱动。仅供个人学习交流与视听体验，请支持正版音乐。</div>
+                <div class="warning">灵光音乐 (AuraMusic) v4.4.2 融合流体美学与智能多源容灾调度，歌曲数据由开源社区与公共接口驱动。仅供个人学习交流与视听体验，请支持正版音乐。</div>
             </div>
             <div class="header-actions">
                 <button id="themeToggleButton" class="theme-toggle-button" type="button" aria-label="切换深浅色模式" title="切换深浅色模式">
@@ -546,6 +549,9 @@
                                 <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-7-7v14"/></svg>
                             </button>
                             </div>
+                            <button id="mobilePanelSettings" class="mobile-panel-action-btn" type="button" aria-label="打开设置" title="系统偏好与自定义音源设置">
+                                <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                            </button>
                             <button id="mobilePanelClose" class="mobile-close-btn mobile-panel-action-btn" type="button" aria-label="收起播放面板">
                             <svg class="apple-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                         </button>
@@ -1045,8 +1051,8 @@
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="js/visual/wave.js?v=4.4.1"></script>
-<script type="module" src="js/app.js?v=4.4.1"></script>
+<script src="js/visual/wave.js?v=4.4.2"></script>
+<script type="module" src="js/app.js?v=4.4.2"></script>
 <script>
     (function () {
         const ua = navigator.userAgent || "";
@@ -1062,7 +1068,7 @@
             }
             const mobileScript = document.createElement('script');
             mobileScript.type = 'module';
-            mobileScript.src = 'js/mobile.js?v=4.4.1';
+            mobileScript.src = 'js/mobile.js?v=4.4.2';
             document.body.appendChild(mobileScript);
         }
     })();

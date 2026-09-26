@@ -112,6 +112,8 @@ export const dom = {
     radarGenreList: document.getElementById("radarGenreList"),
     headerSquareBtn: document.getElementById("headerSquareBtn"),
     headerSettingsBtn: document.getElementById("headerSettingsBtn"),
+    mobileSettingsBtn: document.getElementById("mobileSettingsBtn"),
+    mobilePanelSettings: document.getElementById("mobilePanelSettings"),
     mobileSquareBtn: document.getElementById("mobileSquareButton"),
     squareArea: document.getElementById("squareArea"),
     closeSquareBtn: document.getElementById("closeSquareBtn"),

@@ -565,14 +565,21 @@ export function initLayoutMode(dom) {
 export function initSettings(dom, state, callbacks = {}) {
     renderGenreList(dom, state);
 
-    const headerSettingsBtn = dom?.headerSettingsBtn || document.getElementById("headerSettingsBtn");
-    if (headerSettingsBtn && !headerSettingsBtn.__clickBound) {
-        headerSettingsBtn.__clickBound = true;
-        headerSettingsBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            openSettingsModal(dom, state);
-        });
-    }
+    window.__solaraOpenSettings = () => openSettingsModal(dom, state);
+
+    const bindSettingsTrigger = (el) => {
+        if (el && !el.__clickBound) {
+            el.__clickBound = true;
+            el.addEventListener("click", (e) => {
+                e.stopPropagation();
+                openSettingsModal(dom, state);
+            });
+        }
+    };
+
+    bindSettingsTrigger(dom?.headerSettingsBtn || document.getElementById("headerSettingsBtn"));
+    bindSettingsTrigger(dom?.mobileSettingsBtn || document.getElementById("mobileSettingsBtn"));
+    bindSettingsTrigger(dom?.mobilePanelSettings || document.getElementById("mobilePanelSettings"));
     
     let lastToolbarClick = 0;
     const handleDoubleTap = (e) => {

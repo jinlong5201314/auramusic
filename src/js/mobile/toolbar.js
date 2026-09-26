@@ -30,4 +30,33 @@ export function bindMobileToolbar() {
             }
         });
     }
+
+    // 3. 移动端设置按钮绑定 (顶栏与抽屉面板双重呼应)
+    const mobileSettingsBtn = $("mobileSettingsBtn");
+    if (mobileSettingsBtn) {
+        mobileSettingsBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            triggerLightHaptic();
+            const desktopSettings = $("headerSettingsBtn");
+            if (desktopSettings) {
+                desktopSettings.click();
+            } else if (window.__solaraOpenSettings) {
+                window.__solaraOpenSettings();
+            }
+        });
+    }
+
+    const mobilePanelSettings = $("mobilePanelSettings");
+    if (mobilePanelSettings) {
+        mobilePanelSettings.addEventListener("click", (e) => {
+            e.stopPropagation();
+            triggerLightHaptic();
+            const desktopSettings = $("headerSettingsBtn");
+            if (desktopSettings) {
+                desktopSettings.click();
+            } else if (window.__solaraOpenSettings) {
+                window.__solaraOpenSettings();
+            }
+        });
+    }
 }
